@@ -1,4 +1,4 @@
- import time
+import time
 import schedule
 import logging
 from threading import Timer
@@ -138,7 +138,7 @@ def extract_stock_names(data):
     return stocks
 
 # Start measuring time
-start_time = get_current_time()
+# start_time = get_current_time()
 
 # Start a WebDriver (Chrome in this example)
 service = Service(ChromeDriverManager().install())
@@ -257,14 +257,14 @@ def execute_strategy():
 # Schedule the job to run at a specific time
 schedule.every().day.at("14:50").do(execute_strategy)  # Change "10:20" to your desired time
 
-# End measuring time
-end_time = get_current_time()
+# # End measuring time
+# end_time = get_current_time()
 
-# Calculate total time taken
-total_time = int(end_time - start_time)
+# # Calculate total time taken
+# total_time = int(end_time - start_time)
 
-# Print the total time taken
-print("Total time taken:", total_time, "seconds")
+# # Print the total time taken
+# print("Total time taken:", total_time, "seconds")
 
 
 # Run the scheduler continuously
