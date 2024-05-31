@@ -1,4 +1,4 @@
- import time
+import time
 import schedule
 import logging
 from threading import Timer
@@ -30,8 +30,8 @@ class ShoonyaApiPy(NorenApi):
 api = ShoonyaApiPy()
 
 # Credentials
-user = '####'
-pwd = '*************'
+user = 'FA74468'
+pwd = 'GURU222kore@'
 token = 'YHY66HVX63B3MSFO577I672TXS73T4R5'
 factor2 = pyotp.TOTP(token).now()
 vc = 'FA74468_U'
@@ -125,64 +125,11 @@ Stock_Tokens=['ZYDUSLIFE-EQ', 'ZOMATO-EQ', 'ZFCVINDIA-EQ', 'ZENSARTECH-EQ', 'ZEE
 
 
 
-def extract_stock_names(data):
-    # Parse the JSON data
-    json_data = json.loads(data)
-    
-    # Extract stock names from the JSON data
-    stocks = json_data.get("stocks", "").split(',')
-    stockL=[]
-    stockL=stocks
-    print("New stocks List " ,stockL)
-    
-    return stocks
-
-# Start measuring time
-start_time = get_current_time()
-
-# Start a WebDriver (Chrome in this example)
-service = Service(ChromeDriverManager().install())
-driver = webdriver.Chrome(service=service)
-
-url = "https://webhook.site/#!/view/be9a435f-a200-4c08-b2b5-200bd3d63c41/b7885027-c220-4746-abc5-ebe088b20f24/1"
-driver.get(url)
-
-# Wait for the dynamic content to load
-wait = WebDriverWait(driver, 3)
-element = wait.until(EC.element_to_be_clickable((By.XPATH, '//*[@id="app"]/div/div[1]/div[3]/ul/li[2]/a[1]')))
-
-# Click on the element to trigger the update
-element.click()
-
-# Wait for the updated content to load
-updated_element = wait.until(EC.visibility_of_element_located((By.XPATH, '//*[@id="request"]/div[3]/div/div[5]/div/div/div[2]/pre')))
-
-# Extract the text content of the updated element
-data = updated_element.text.strip()
-
-# Extract stock names from the data
-stocks = extract_stock_names(data)
-
-# End measuring time
-# end_time = get_current_time()
-
-# Calculate total time taken
-# total_time = int(end_time - start_time)
-
-# Print the extracted stock names
-print("Stocks:", stocks)
-
-# Print the total time taken
-# print("Total time taken:", total_time, "seconds")
-
-# Close the browser
-driver.quit()
 
 
 
 ##################################################################################
 ##################################################################################
-
 
 
 
@@ -191,6 +138,58 @@ driver.quit()
 
 # Define function to execute the trading strategy
 def execute_strategy():
+    def extract_stock_names(data):
+        # Parse the JSON data
+        json_data = json.loads(data)
+
+        # Extract stock names from the JSON data
+        stocks = json_data.get("stocks", "").split(',')
+        stockL = list(stocks)
+        print("New stocks List ", stockL)
+
+        return stockL
+
+    # Start measuring time
+    # start_time = get_current_time()
+
+    # Start a WebDriver (Chrome in this example)
+    service = Service(ChromeDriverManager().install())
+    driver = webdriver.Chrome(service=service)
+
+    url = "https://webhook.site/#!/view/be9a435f-a200-4c08-b2b5-200bd3d63c41/b7885027-c220-4746-abc5-ebe088b20f24/1"
+    driver.get(url)
+
+    # Wait for the dynamic content to load
+    wait = WebDriverWait(driver, 3)
+    element = wait.until(EC.element_to_be_clickable((By.XPATH, '//*[@id="app"]/div/div[1]/div[3]/ul/li[2]/a[1]')))
+
+    # Click on the element to trigger the update
+    element.click()
+
+    # Wait for the updated content to load
+    updated_element = wait.until(EC.visibility_of_element_located((By.XPATH, '//*[@id="request"]/div[3]/div/div[5]/div/div/div[2]/pre')))
+
+    # Extract the text content of the updated element
+    data = updated_element.text.strip()
+
+    # Extract stock names from the data
+    stocks = extract_stock_names(data)
+
+    # End measuring time
+    # end_time = get_current_time()
+
+    # Calculate total time taken
+    # total_time = int(end_time - start_time)
+
+    # Print the extracted stock names
+    print("Stocks:", stocks)
+
+    # Print the total time taken
+    # print("Total time taken:", total_time, "seconds")
+
+    # Close the browser
+    driver.quit()
+
     # List of stock symbols
     stocksList = extract_stock_names(data)
 
@@ -212,13 +211,11 @@ def execute_strategy():
             # Extract the last traded price (LTP) from the quote
             LTP = float(quote["lp"])
 
-             # Calculate target price and stop loss
+            # Calculate target price and stop loss
             targetPrice = round((LTP * 1.008), 2)
             stopLoss = round((LTP * 0.9955), 2)
-            stopLossFinal=round(float(stopLoss)*10)/10
-            targetPriceFinal=round(float(targetPrice)*10)/10
-
-
+            stopLossFinal = round(float(stopLoss) * 10) / 10
+            targetPriceFinal = round(float(targetPrice) * 10) / 10
 
             # Print target price, stop loss, and LTP
             print("Symbol:", symbol)
@@ -230,13 +227,11 @@ def execute_strategy():
             qtyGet = len(stocksList)
             capUsed = 200000
             capForEachStock = capUsed * 5 / qtyGet
-            
 
-
-            #to manage no trades on low stocks
-            if qtyGet<=2:
-                capForEachStock=150000
-            elif qtyGet==3:
+            # to manage no trades on low stocks
+            if qtyGet <= 2:
+                capForEachStock = 150000
+            elif qtyGet == 3:
                 capForEachStock = 200000
             else:
                 capForEachStock = int(capUsed * 5 / qtyGet)
@@ -245,8 +240,10 @@ def execute_strategy():
             print(capForEachStock)
 
             # Place order using the API (replace this with your actual order placement code)
-            api.place_order(buy_or_sell='B', product_type='B', exchange=exchange, tradingsymbol=tokenForStock, quantity=PlaceQtyForEachStock, 
-                            discloseqty=0, price_type='LMT', price=LTP, trigger_price=None, retention='DAY', remarks='my_order_001', 
+            api.place_order(buy_or_sell='B', product_type='B', exchange=exchange, tradingsymbol=tokenForStock,
+                            quantity=PlaceQtyForEachStock,
+                            discloseqty=0, price_type='LMT', price=LTP, trigger_price=None, retention='DAY',
+                            remarks='my_order_001',
                             bookloss_price=stopLossFinal, bookprofit_price=targetPriceFinal)
 
         except ValueError:
@@ -254,17 +251,26 @@ def execute_strategy():
         except Exception as e:
             print(f"Error occurred for symbol {symbol}: {e}")
 
-# Schedule the job to run at a specific time
-schedule.every().day.at("14:50").do(execute_strategy)  # Change "10:20" to your desired time
+# # Schedule the job to run at a specific time
+# schedule.every().day.at("18:14").do(extract_stock_names)
+# schedule.every().day.at("18:15").do(execute_strategy)  # Change "10:20" to your desired time
+
+# def run_functions_in_sequence():
+#     # extract_stock_names()
+#     execute_strategy()
+
+#     execute_strategy()
+
+schedule.every().day.at("10:06").do(execute_strategy)
 
 # End measuring time
-end_time = get_current_time()
+# end_time = get_current_time()
 
 # Calculate total time taken
-total_time = int(end_time - start_time)
+# total_time = int(end_time - start_time)
 
 # Print the total time taken
-print("Total time taken:", total_time, "seconds")
+# print("Total time taken:", total_time, "seconds")
 
 
 # Run the scheduler continuously
