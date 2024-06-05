@@ -253,7 +253,7 @@ def execute_strategy():
 
 # Function to book orders
 def book_orders():
-    global stocksList, completed_orders, all_orders_completed, slArray, PlaceQtyForEachStockArray
+    global stocksList, completed_orders, all_orders_completed, slArray, PlaceQtyForEachStockArray,Stock_Symbols,Stock_Tokens
     exchange = 'NSE'
     # print(slArray)
     # print(stocksList)
@@ -271,10 +271,29 @@ def book_orders():
             # print(slArray[i])
             # print(stopLossFinal)
             # print(targetPriceFinal)
+            
+            
+            
+            # Find the index of the current symbol in the list of all symbols
+            index = Stock_Symbols.index(symbol)
+
+            # Get the token corresponding to the current symbol
+            tokenForStock = Stock_Tokens[index]
+            
+            quote = api.get_quotes(exchange=exchange, token=tokenForStock)
+
+            # Extract the last traded price (LTP) from the quote
+            LTP = float(quote["lp"])
+           
+            print(stocksList[i])
+            print(LTP)
             print(PlaceQtyForEachStockArray[i])
+            print(stopLossFinal)
+            print(targetPriceFinal)
+            
             
             # Check if the stop loss or target price is reached
-            if slArray[i] <= stopLossFinal:
+            if (LTP <= stopLossFinal) or (LTP >= targetPriceFinal):
                 # Get the token corresponding to the current symbol
                 index = Stock_Symbols.index(symbol)
                 tokenForStock = Stock_Tokens[index]
@@ -284,17 +303,6 @@ def book_orders():
                                 discloseqty=0, price_type='MKT', trigger_price=None, retention='DAY',
                                 remarks='stop_loss_order')
                 print(f"Stop loss triggered for symbol: {symbol} at price: {slArray[i]}")
-                completed_orders.append(symbol)
-            elif slArray[i] >= targetPriceFinal:
-                # Get the token corresponding to the current symbol
-                index = Stock_Symbols.index(symbol)
-                tokenForStock = Stock_Tokens[index]
-                
-                api.place_order(buy_or_sell='S', product_type='I', exchange=exchange, tradingsymbol=tokenForStock,
-                                quantity=PlaceQtyForEachStockArray[i],
-                                discloseqty=0, price_type='MKT', trigger_price=None, retention='DAY',
-                                remarks='target_price_order')
-                print(f"Target price reached for symbol: {symbol} at price: {slArray[i]}")
                 completed_orders.append(symbol)
             else:
                 continue
@@ -320,7 +328,7 @@ def book_orders():
         all_orders_completed = True
 
 # Schedule the job to run at a specific time
-schedule.every().day.at("23:51").do(execute_strategy)
+schedule.every().day.at("01:36").do(execute_strategy)
 
 # Run the scheduler continuously until orders are placed
 while not orders_placed:
