@@ -134,9 +134,13 @@ orders_placed = False
 stocksList = []  # Define stocksList as global
 completed_orders = []  # Track completed orders
 all_orders_completed = False
+slArray=[]
+PlaceQtyForEachStockArray=[]
+
 
 # Define function to execute the trading strategy
 def execute_strategy():
+    global slArray
     global stocksList
 
     def extract_stock_names(data):
@@ -180,7 +184,7 @@ def execute_strategy():
     exchange = 'NSE'
 
     # Iterate over each stock symbol
-    for symbol in stocksList:
+    for i,symbol in enumerate(stocksList):
         try:
             # Find the index of the current symbol in the list of all symbols
             index = Stock_Symbols.index(symbol)
@@ -194,6 +198,8 @@ def execute_strategy():
             # Extract the last traded price (LTP) from the quote
             LTP = float(quote["lp"])
 
+            slArray.append(LTP)
+
             # Calculate target price and stop loss
             targetPrice = round((LTP * 1.008), 2)
             stopLoss = round((LTP * 0.9955), 2)
@@ -201,6 +207,7 @@ def execute_strategy():
             targetPriceFinal = round(float(targetPrice) * 10) / 10
 
             # Print target price, stop loss, and LTP
+            #print(slArray)
             print("Symbol:", symbol)
             print("Stop Loss:", stopLossFinal)
             print("Target Price:", targetPriceFinal)
@@ -210,6 +217,7 @@ def execute_strategy():
             qtyGet = len(stocksList)
             capUsed = 20000
             capForEachStock = capUsed * 5 / qtyGet
+            
 
             # to manage no trades on low stocks
             if qtyGet <= 2:
@@ -220,6 +228,7 @@ def execute_strategy():
                 capForEachStock = int(capUsed * 5 / qtyGet)
 
             PlaceQtyForEachStock = int((capForEachStock / LTP) - 1)
+            PlaceQtyForEachStockArray.append(PlaceQtyForEachStock)
             print(capForEachStock)
 
             # Place order using the API (replace this with your actual order placement code)
@@ -239,46 +248,48 @@ def execute_strategy():
 
 # Function to book orders
 def book_orders():
-    global stocksList, completed_orders, all_orders_completed
+    global stocksList, completed_orders, all_orders_completed, slArray, PlaceQtyForEachStockArray
     exchange = 'NSE'
-
-    # Iterate over each stock symbol
-    for symbol in stocksList:
-        print(stocksList)
-        print(completed_orders)
+    # print(slArray)
+    # print(stocksList)
+    # print(completed_orders)
+    
+    # Iterate over each stock symbol by index to keep track of the current index
+    for i, symbol in enumerate(stocksList):
+        
         try:
-            # Find the index of the current symbol in the list of all symbols
-            index = Stock_Symbols.index(symbol)
-
-            # Get the token corresponding to the current symbol
-            tokenForStock = Stock_Tokens[index]
-
-            # Retrieve the latest quote for the current symbol using the API
-            quote = api.get_quotes(exchange=exchange, token=tokenForStock)
-
-            # Extract the last traded price (LTP) from the quote
-            LTP = float(quote["lp"])
-
             # Calculate target price and stop loss (these should be calculated the same way as in execute_strategy)
-            targetPrice = round((LTP * 1.008), 2)
-            stopLoss = round((LTP * 0.9955), 2)
+            targetPrice = round((slArray[i] * 1.008), 2)
+            stopLoss = round((slArray[i] * 0.9955), 2)
             stopLossFinal = round(float(stopLoss) * 10) / 10
             targetPriceFinal = round(float(targetPrice) * 10) / 10
-
+            # print(slArray[i])
+            # print(stopLossFinal)
+            # print(targetPriceFinal)
+            print(PlaceQtyForEachStockArray[i])
+            
             # Check if the stop loss or target price is reached
-            if LTP <= stopLossFinal:
+            if slArray[i] <= stopLossFinal:
+                # Get the token corresponding to the current symbol
+                index = Stock_Symbols.index(symbol)
+                tokenForStock = Stock_Tokens[index]
+                
                 api.place_order(buy_or_sell='S', product_type='I', exchange=exchange, tradingsymbol=tokenForStock,
-                                quantity=PlaceQtyForEachStock,
+                                quantity=PlaceQtyForEachStockArray[i],
                                 discloseqty=0, price_type='MKT', trigger_price=None, retention='DAY',
                                 remarks='stop_loss_order')
-                print(f"Stop loss triggered for symbol: {symbol} at price: {LTP}")
+                print(f"Stop loss triggered for symbol: {symbol} at price: {slArray[i]}")
                 completed_orders.append(symbol)
-            elif LTP >= targetPriceFinal:
+            elif slArray[i] >= targetPriceFinal:
+                # Get the token corresponding to the current symbol
+                index = Stock_Symbols.index(symbol)
+                tokenForStock = Stock_Tokens[index]
+                
                 api.place_order(buy_or_sell='S', product_type='I', exchange=exchange, tradingsymbol=tokenForStock,
-                                quantity=PlaceQtyForEachStock,
+                                quantity=PlaceQtyForEachStockArray[i],
                                 discloseqty=0, price_type='MKT', trigger_price=None, retention='DAY',
                                 remarks='target_price_order')
-                print(f"Target price reached for symbol: {symbol} at price: {LTP}")
+                print(f"Target price reached for symbol: {symbol} at price: {slArray[i]}")
                 completed_orders.append(symbol)
             else:
                 continue
@@ -288,15 +299,23 @@ def book_orders():
         except Exception as e:
             print(f"Error occurred for symbol {symbol}: {e}")
 
-    # Remove completed orders from stocksList
-    stocksList = [symbol for symbol in stocksList if symbol not in completed_orders]
+    # Remove completed orders from stocksList and slArray
+    for symbol in completed_orders:
+        index = stocksList.index(symbol)
+        stocksList.pop(index)
+        slArray.pop(index)
+        PlaceQtyForEachStockArray.pop(index)
+        
+
+    # Clear completed_orders list after processing
+    completed_orders.clear()
 
     # Check if all orders are completed
     if not stocksList:
         all_orders_completed = True
 
 # Schedule the job to run at a specific time
-schedule.every().day.at("00:02").do(execute_strategy)
+schedule.every().day.at("23:51").do(execute_strategy)
 
 # Run the scheduler continuously until orders are placed
 while not orders_placed:
