@@ -189,8 +189,7 @@ def execute_strategy():
     # Iterate over each stock symbol
     for i,symbol in enumerate(stocksList):
         try:
-            if symbol in remove_stocks:
-                stocksList.remove(symbol)
+            stocksList = [symbol for symbol in stocksList if symbol not in remove_stocks]
             
             # Find the index of the current symbol in the list of all symbols
             index = Stock_Symbols.index(symbol)
