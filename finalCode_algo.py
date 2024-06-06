@@ -1,4 +1,4 @@
- import time
+import time
 import schedule
 import logging
 from threading import Timer
@@ -30,8 +30,8 @@ class ShoonyaApiPy(NorenApi):
 api = ShoonyaApiPy()
 
 # Credentials
-user = '########'
-pwd = '**********'
+user = 'FA74468'
+pwd = 'GURU222kore@'
 token = 'YHY66HVX63B3MSFO577I672TXS73T4R5'
 factor2 = pyotp.TOTP(token).now()
 vc = 'FA74468_U'
@@ -125,81 +125,72 @@ Stock_Tokens=['ZYDUSLIFE-EQ', 'ZOMATO-EQ', 'ZFCVINDIA-EQ', 'ZENSARTECH-EQ', 'ZEE
 
 
 
-def extract_stock_names(data):
-    # Parse the JSON data
-    json_data = json.loads(data)
-    
-    # Extract stock names from the JSON data
-    stocks = json_data.get("stocks", "").split(',')
-    stockL=[]
-    stockL=stocks
-    print("New stocks List " ,stockL)
-    
-    return stocks
-
-# Start measuring time
-start_time = get_current_time()
-
-# Start a WebDriver (Chrome in this example)
-service = Service(ChromeDriverManager().install())
-driver = webdriver.Chrome(service=service)
-
-url = "https://webhook.site/#!/view/be9a435f-a200-4c08-b2b5-200bd3d63c41/b7885027-c220-4746-abc5-ebe088b20f24/1"
-driver.get(url)
-
-# Wait for the dynamic content to load
-wait = WebDriverWait(driver, 3)
-element = wait.until(EC.element_to_be_clickable((By.XPATH, '//*[@id="app"]/div/div[1]/div[3]/ul/li[2]/a[1]')))
-
-# Click on the element to trigger the update
-element.click()
-
-# Wait for the updated content to load
-updated_element = wait.until(EC.visibility_of_element_located((By.XPATH, '//*[@id="request"]/div[3]/div/div[5]/div/div/div[2]/pre')))
-
-# Extract the text content of the updated element
-data = updated_element.text.strip()
-
-# Extract stock names from the data
-stocks = extract_stock_names(data)
-
-# End measuring time
-# end_time = get_current_time()
-
-# Calculate total time taken
-# total_time = int(end_time - start_time)
-
-# Print the extracted stock names
-print("Stocks:", stocks)
-
-# Print the total time taken
-# print("Total time taken:", total_time, "seconds")
-
-# Close the browser
-driver.quit()
 
 
 
 ##################################################################################
 ##################################################################################
-
-
-
-
-
+orders_placed = False
+stocksList = []  # Define stocksList as global
+completed_orders = []  # Track completed orders
+all_orders_completed = False
+slArray=[]
+PlaceQtyForEachStockArray=[]
+remove_stocks = ['M&M-EQ', 'M&MFIN-EQ', 'J&KBANK-EQ']
 
 
 # Define function to execute the trading strategy
 def execute_strategy():
-    # List of stock symbols
+    global slArray
+    global stocksList
+
+    def extract_stock_names(data):
+        # Parse the JSON data
+        json_data = json.loads(data)
+
+        # Extract stock names from the JSON data
+        stocks = json_data.get("stocks", "").split(',')
+        stockL = list(stocks)
+        print("New stocks List ", stockL)
+
+        return stockL
+
+    
+
+    # Start a WebDriver (Chrome in this example)
+    service = Service(ChromeDriverManager().install())
+    driver = webdriver.Chrome(service=service)
+
+    url = "https://webhook.site/#!/view/be9a435f-a200-4c08-b2b5-200bd3d63c41/b7885027-c220-4746-abc5-ebe088b20f24/1"
+    driver.get(url)
+
+    # Wait for the dynamic content to load
+    wait = WebDriverWait(driver, 3)
+    element = wait.until(EC.element_to_be_clickable((By.XPATH, '//*[@id="app"]/div/div[1]/div[3]/ul/li[2]/a[1]')))
+
+    # Click on the element to trigger the update
+    element.click()
+
+    # Wait for the updated content to load
+    updated_element = wait.until(EC.visibility_of_element_located((By.XPATH, '//*[@id="request"]/div[3]/div/div[5]/div/div/div[2]/pre')))
+
+    # Extract the text content of the updated element
+    data = updated_element.text.strip()
+
+    # Extract stock names from the data
     stocksList = extract_stock_names(data)
+
+    # Close the browser
+    driver.quit()
 
     # Stock exchange
     exchange = 'NSE'
 
     # Iterate over each stock symbol
-    for symbol in stocksList:
+    for i,symbol in enumerate(stocksList):
         try:
+            stocksList = [symbol for symbol in stocksList if symbol not in remove_stocks]
+            
             # Find the index of the current symbol in the list of all symbols
             index = Stock_Symbols.index(symbol)
 
@@ -212,15 +203,16 @@ def execute_strategy():
             # Extract the last traded price (LTP) from the quote
             LTP = float(quote["lp"])
 
-             # Calculate target price and stop loss
+            slArray.append(LTP)
+
+            # Calculate target price and stop loss
             targetPrice = round((LTP * 1.008), 2)
             stopLoss = round((LTP * 0.9955), 2)
-            stopLossFinal=round(float(stopLoss)*10)/10
-            targetPriceFinal=round(float(targetPrice)*10)/10
-
-
+            stopLossFinal = round(float(stopLoss) * 10) / 10
+            targetPriceFinal = round(float(targetPrice) * 10) / 10
 
             # Print target price, stop loss, and LTP
+            #print(slArray)
             print("Symbol:", symbol)
             print("Stop Loss:", stopLossFinal)
             print("Target Price:", targetPriceFinal)
@@ -228,50 +220,149 @@ def execute_strategy():
 
             # Calculate quantity, capital used, and quantity to place order for each stock
             qtyGet = len(stocksList)
-            capUsed = 200000
+            capUsed = 20000
             capForEachStock = capUsed * 5 / qtyGet
             
 
-
-            #to manage no trades on low stocks
-            if qtyGet<=2:
-                capForEachStock=150000
-            elif qtyGet==3:
-                capForEachStock = 200000
+            # to manage no trades on low stocks
+            if qtyGet <= 2:
+                capForEachStock = 20000
+            elif qtyGet == 3:
+                capForEachStock = 20000
             else:
                 capForEachStock = int(capUsed * 5 / qtyGet)
 
             PlaceQtyForEachStock = int((capForEachStock / LTP) - 1)
+            PlaceQtyForEachStockArray.append(PlaceQtyForEachStock)
             print(capForEachStock)
 
             # Place order using the API (replace this with your actual order placement code)
-            api.place_order(buy_or_sell='B', product_type='B', exchange=exchange, tradingsymbol=tokenForStock, quantity=PlaceQtyForEachStock, 
-                            discloseqty=0, price_type='LMT', price=LTP, trigger_price=None, retention='DAY', remarks='my_order_001', 
-                            bookloss_price=stopLossFinal, bookprofit_price=targetPriceFinal)
+            api.place_order(buy_or_sell='B', product_type='I', exchange=exchange, tradingsymbol=tokenForStock,
+                            quantity=PlaceQtyForEachStock,
+                            discloseqty=0, price_type='MKT', trigger_price=None, retention='DAY',
+                            remarks='my_order_001', bookprofit_price=targetPriceFinal)
 
         except ValueError:
             print(f"Symbol {symbol} not found in the list.")
         except Exception as e:
             print(f"Error occurred for symbol {symbol}: {e}")
 
+    # Indicate that orders have been placed
+    global orders_placed
+    orders_placed = True
+
+
+
+# Function to book orders
+def book_orders():
+    global stocksList, completed_orders, all_orders_completed, slArray, PlaceQtyForEachStockArray,Stock_Symbols,Stock_Tokens
+    exchange = 'NSE'
+    # print(slArray)
+    # print(stocksList)
+    # print(completed_orders)
+    ret = api.get_positions()
+    mtm = 0
+    pnl = 0
+    for i in ret:
+        mtm += float(i['urmtom'])
+        pnl += float(i['rpnl'])
+        day_m2m = mtm + pnl            
+            
+    # Check if the stop loss or target price is reached
+    if day_m2m<=-220:
+        print('Executed_allSL')
+        for i, symbol in enumerate(stocksList):
+            api.place_order(buy_or_sell='S', product_type='I', exchange=exchange, tradingsymbol=tokenForStock,
+                quantity=PlaceQtyForEachStockArray[i],
+                discloseqty=0, price_type='MKT', trigger_price=None, retention='DAY',
+                remarks='stop_loss_order')
+
+
+    # Iterate over each stock symbol by index to keep track of the current index
+    for i, symbol in enumerate(stocksList):
+        print('Passed_allSL')
+        
+        try:
+            # Calculate target price and stop loss (these should be calculated the same way as in execute_strategy)
+            targetPrice = round((slArray[i] * 1.008), 2)
+            stopLoss = round((slArray[i] * 0.9955), 2)
+            stopLossFinal = round(float(stopLoss) * 10) / 10
+            targetPriceFinal = round(float(targetPrice) * 10) / 10
+            # print(slArray[i])
+            # print(stopLossFinal)
+            # print(targetPriceFinal)
+            
+            
+            
+            # Find the index of the current symbol in the list of all symbols
+            index = Stock_Symbols.index(symbol)
+
+            # Get the token corresponding to the current symbol
+            tokenForStock = Stock_Tokens[index]
+            
+            quote = api.get_quotes(exchange=exchange, token=tokenForStock)
+
+            # Extract the last traded price (LTP) from the quote
+            LTP = float(quote["lp"])
+           
+            # print(stocksList[i])
+            # print(LTP)
+            # print(PlaceQtyForEachStockArray[i])
+            # print(stopLossFinal)
+            # print(targetPriceFinal)
+
+                
+            
+            if (LTP <= stopLossFinal) or (LTP >= targetPriceFinal):
+                # Get the token corresponding to the current symbol
+                index = Stock_Symbols.index(symbol)
+                tokenForStock = Stock_Tokens[index]
+                
+                api.place_order(buy_or_sell='S', product_type='I', exchange=exchange, tradingsymbol=tokenForStock,
+                                quantity=PlaceQtyForEachStockArray[i],
+                                discloseqty=0, price_type='MKT', trigger_price=None, retention='DAY',
+                                remarks='stop_loss_order')
+                print(f"Stop loss triggered for symbol: {symbol} at price: {slArray[i]}")
+                completed_orders.append(symbol)
+            else:
+                continue
+
+        except ValueError:
+            print(f"Symbol {symbol} not found in the list.")
+        except Exception as e:
+            print(f"Error occurred for symbol {symbol}: {e}")
+
+    # Remove completed orders from stocksList and slArray
+    for symbol in completed_orders:
+        index = stocksList.index(symbol)
+        stocksList.pop(index)
+        slArray.pop(index)
+        PlaceQtyForEachStockArray.pop(index)
+        
+
+    # Clear completed_orders list after processing
+    completed_orders.clear()
+
+    # Check if all orders are completed
+    if not stocksList:
+        all_orders_completed = True
+
 # Schedule the job to run at a specific time
-schedule.every().day.at("14:50").do(execute_strategy)  # Change "10:20" to your desired time
+schedule.every().day.at("22:48").do(execute_strategy)
 
-# End measuring time
-end_time = get_current_time()
-
-# Calculate total time taken
-total_time = int(end_time - start_time)
-
-# Print the total time taken
-print("Total time taken:", total_time, "seconds")
-
-
-# Run the scheduler continuously
-while True:
+# Run the scheduler continuously until orders are placed
+while not orders_placed:
     schedule.run_pending()
     time.sleep(1)  # Sleep to avoid high CPU usage
 
+print("Orders have been placed. Proceeding to book orders.")
 
+# Now, schedule the booking of orders
+schedule.every(15).seconds.do(book_orders)
 
+# Run the scheduler to book orders continuously until all orders are completed
+while not all_orders_completed:
+    schedule.run_pending()
+    time.sleep(1)  # Sleep to avoid high CPU usage
 
+print("All orders have been processed. Exiting.")
