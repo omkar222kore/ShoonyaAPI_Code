@@ -15,6 +15,8 @@ from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+import time
+from apscheduler.schedulers.background import BackgroundScheduler
 
 
 
@@ -31,8 +33,8 @@ api = ShoonyaApiPy()
 
 # Credentials
 user = 'FA74468'
-pwd = 'GURU222kore@'
-token = 'YHY66HVX63B3MSFO577I672TXS73T4R5'
+pwd = 'GURU222kore$'
+token = 'XT2L66VT73Q22P33BNCHKN6WA2Q37KK6'
 factor2 = pyotp.TOTP(token).now()
 vc = 'FA74468_U'
 app_key = 'c98e82a190da8181c80fb94cf0a31144'
@@ -134,15 +136,13 @@ orders_placed = False
 stocksList = []  # Define stocksList as global
 completed_orders = []  # Track completed orders
 all_orders_completed = False
-slArray=[]
-PlaceQtyForEachStockArray=[]
+slArray = []
+PlaceQtyForEachStockArray = []
 remove_stocks = ['M&M-EQ', 'M&MFIN-EQ', 'J&KBANK-EQ']
-
 
 # Define function to execute the trading strategy
 def execute_strategy():
-    global slArray
-    global stocksList
+    global slArray, stocksList, orders_placed
 
     def extract_stock_names(data):
         # Parse the JSON data
@@ -154,8 +154,6 @@ def execute_strategy():
         print("New stocks List ", stockL)
 
         return stockL
-
-    
 
     # Start a WebDriver (Chrome in this example)
     service = Service(ChromeDriverManager().install())
@@ -187,10 +185,11 @@ def execute_strategy():
     exchange = 'NSE'
 
     # Iterate over each stock symbol
-    for i,symbol in enumerate(stocksList):
+    for i, symbol in enumerate(stocksList):
         try:
+            # Remove the specified stocks from the list
             stocksList = [symbol for symbol in stocksList if symbol not in remove_stocks]
-            
+
             # Find the index of the current symbol in the list of all symbols
             index = Stock_Symbols.index(symbol)
 
@@ -212,7 +211,6 @@ def execute_strategy():
             targetPriceFinal = round(float(targetPrice) * 10) / 10
 
             # Print target price, stop loss, and LTP
-            #print(slArray)
             print("Symbol:", symbol)
             print("Stop Loss:", stopLossFinal)
             print("Target Price:", targetPriceFinal)
@@ -220,11 +218,10 @@ def execute_strategy():
 
             # Calculate quantity, capital used, and quantity to place order for each stock
             qtyGet = len(stocksList)
-            capUsed = 20000
+            capUsed = 19600
             capForEachStock = capUsed * 5 / qtyGet
-            
 
-            # to manage no trades on low stocks
+            # To manage no trades on low stocks
             if qtyGet <= 2:
                 capForEachStock = 20000
             elif qtyGet == 3:
@@ -232,15 +229,14 @@ def execute_strategy():
             else:
                 capForEachStock = int(capUsed * 5 / qtyGet)
 
-            PlaceQtyForEachStock = int((capForEachStock / LTP) - 1)
+            PlaceQtyForEachStock = int((capForEachStock / LTP))
             PlaceQtyForEachStockArray.append(PlaceQtyForEachStock)
             print(capForEachStock)
 
             # Place order using the API (replace this with your actual order placement code)
             api.place_order(buy_or_sell='B', product_type='I', exchange=exchange, tradingsymbol=tokenForStock,
-                            quantity=PlaceQtyForEachStock,
-                            discloseqty=0, price_type='MKT', trigger_price=None, retention='DAY',
-                            remarks='my_order_001', bookprofit_price=targetPriceFinal)
+                            quantity=PlaceQtyForEachStock, discloseqty=0, price_type='MKT', trigger_price=None,
+                            retention='DAY', remarks='my_order_001', bookprofit_price=targetPriceFinal)
 
         except ValueError:
             print(f"Symbol {symbol} not found in the list.")
@@ -248,80 +244,66 @@ def execute_strategy():
             print(f"Error occurred for symbol {symbol}: {e}")
 
     # Indicate that orders have been placed
-    global orders_placed
     orders_placed = True
 
 
 
+
 # Function to book orders
-def book_orders():
-    global stocksList, completed_orders, all_orders_completed, slArray, PlaceQtyForEachStockArray,Stock_Symbols,Stock_Tokens
+def book_orders(scheduler=None):
+    global stocksList, completed_orders, all_orders_completed, slArray, PlaceQtyForEachStockArray, Stock_Symbols, Stock_Tokens
     exchange = 'NSE'
-    # print(slArray)
-    # print(stocksList)
-    # print(completed_orders)
+
     ret = api.get_positions()
+    if ret is None:
+        print("No positions found.")
+        all_orders_completed = True  # Indicate no positions found, stopping scheduler
+        if scheduler:
+            scheduler.stop()  # Stop the scheduler
+        return
+
     mtm = 0
     pnl = 0
     for i in ret:
         mtm += float(i['urmtom'])
         pnl += float(i['rpnl'])
-        day_m2m = mtm + pnl            
-            
-    # Check if the stop loss or target price is reached
-    if day_m2m<=-220:
+    day_m2m = mtm + pnl
+
+    if day_m2m <= -220 and not all_orders_completed:
         print('Executed_allSL')
         for i, symbol in enumerate(stocksList):
-            api.place_order(buy_or_sell='S', product_type='I', exchange=exchange, tradingsymbol=tokenForStock,
-                quantity=PlaceQtyForEachStockArray[i],
-                discloseqty=0, price_type='MKT', trigger_price=None, retention='DAY',
-                remarks='stop_loss_order')
+            try:
+                index = Stock_Symbols.index(symbol)
+                tokenForStock = Stock_Tokens[index]
+                api.place_order(buy_or_sell='S', product_type='I', exchange=exchange, tradingsymbol=tokenForStock,
+                                quantity=PlaceQtyForEachStockArray[i], discloseqty=0, price_type='MKT',
+                                trigger_price=None, retention='DAY', remarks='stop_loss_order')
+            except ValueError:
+                print(f"Symbol {symbol} not found in the list.")
+            except Exception as e:
+                print(f"Error occurred for symbol {symbol}: {e}")
 
+        all_orders_completed = True  # Indicate all stop-loss orders are placed
+        if scheduler:
+            scheduler.stop()  # Stop the scheduler
+        return  # Exit the function after placing stop-loss orders
 
-    # Iterate over each stock symbol by index to keep track of the current index
     for i, symbol in enumerate(stocksList):
-        print('Passed_allSL')
-        
         try:
-            # Calculate target price and stop loss (these should be calculated the same way as in execute_strategy)
             targetPrice = round((slArray[i] * 1.008), 2)
             stopLoss = round((slArray[i] * 0.9955), 2)
             stopLossFinal = round(float(stopLoss) * 10) / 10
             targetPriceFinal = round(float(targetPrice) * 10) / 10
-            # print(slArray[i])
-            # print(stopLossFinal)
-            # print(targetPriceFinal)
-            
-            
-            
-            # Find the index of the current symbol in the list of all symbols
+
             index = Stock_Symbols.index(symbol)
-
-            # Get the token corresponding to the current symbol
             tokenForStock = Stock_Tokens[index]
-            
             quote = api.get_quotes(exchange=exchange, token=tokenForStock)
-
-            # Extract the last traded price (LTP) from the quote
             LTP = float(quote["lp"])
-           
-            # print(stocksList[i])
-            # print(LTP)
-            # print(PlaceQtyForEachStockArray[i])
-            # print(stopLossFinal)
-            # print(targetPriceFinal)
 
-                
-            
             if (LTP <= stopLossFinal) or (LTP >= targetPriceFinal):
-                # Get the token corresponding to the current symbol
-                index = Stock_Symbols.index(symbol)
-                tokenForStock = Stock_Tokens[index]
-                
                 api.place_order(buy_or_sell='S', product_type='I', exchange=exchange, tradingsymbol=tokenForStock,
-                                quantity=PlaceQtyForEachStockArray[i],
-                                discloseqty=0, price_type='MKT', trigger_price=None, retention='DAY',
-                                remarks='stop_loss_order')
+                                quantity=PlaceQtyForEachStockArray[i], discloseqty=0, price_type='MKT',
+                                trigger_price=None, retention='DAY', remarks='stop_loss_order')
                 print(f"Stop loss triggered for symbol: {symbol} at price: {slArray[i]}")
                 completed_orders.append(symbol)
             else:
@@ -332,37 +314,40 @@ def book_orders():
         except Exception as e:
             print(f"Error occurred for symbol {symbol}: {e}")
 
-    # Remove completed orders from stocksList and slArray
     for symbol in completed_orders:
         index = stocksList.index(symbol)
         stocksList.pop(index)
         slArray.pop(index)
         PlaceQtyForEachStockArray.pop(index)
-        
 
-    # Clear completed_orders list after processing
     completed_orders.clear()
 
-    # Check if all orders are completed
     if not stocksList:
         all_orders_completed = True
+        if scheduler:
+            scheduler.stop()  # Stop the scheduler
 
-# Schedule the job to run at a specific time
-schedule.every().day.at("22:48").do(execute_strategy)
 
-# Run the scheduler continuously until orders are placed
-while not orders_placed:
-    schedule.run_pending()
-    time.sleep(1)  # Sleep to avoid high CPU usage
 
-print("Orders have been placed. Proceeding to book orders.")
 
-# Now, schedule the booking of orders
-schedule.every(15).seconds.do(book_orders)
+# Initialize the scheduler
+scheduler = BackgroundScheduler()
 
-# Run the scheduler to book orders continuously until all orders are completed
-while not all_orders_completed:
-    schedule.run_pending()
-    time.sleep(1)  # Sleep to avoid high CPU usage
+def execute_strategy_job():
+    # Run the execute_strategy function
+    execute_strategy()
+    # After execute_strategy completes, start scheduling book_orders every 10 seconds
+    scheduler.add_job(book_orders, 'interval', seconds=10, id='book_orders_job', kwargs={'scheduler': scheduler})
 
-print("All orders have been processed. Exiting.")
+# Schedule execute_strategy to run at 10:06 AM every day
+scheduler.add_job(execute_strategy_job, 'cron', hour=21, minute=00, id='execute_strategy_job')
+
+# Start the scheduler
+scheduler.start()
+
+# Ensuring graceful shutdown
+try:
+    while True:
+        time.sleep(2)
+except (KeyboardInterrupt, SystemExit):
+    scheduler.shutdown()
