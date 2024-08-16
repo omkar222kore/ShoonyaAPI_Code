@@ -1,7 +1,7 @@
 import time
 import os
 import csv
-from datetime import datetime as dt_datetime
+from datetime import datetime as dt_datetime, timedelta
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
@@ -20,7 +20,7 @@ for file in files:
     except Exception as e:
         print(f"Error deleting {file}: {e}")
 
-def download_csv(chrome_driver_path, login_url, username, password, csv_file_name, target_datetime_str):
+def download_csv(chrome_driver_path, login_url, username, password, csv_file_name):
     # Initialize Chrome WebDriver
     service = Service(chrome_driver_path)
     options = webdriver.ChromeOptions()
@@ -55,15 +55,18 @@ def download_csv(chrome_driver_path, login_url, username, password, csv_file_nam
         # Check if the CSV file exists
         if not os.path.exists(csv_file_path):
             print(f"CSV file not found: {csv_file_path}")
-            return []
+            return ([], None)
         
-        # Define the target datetime
-        target_datetime = dt_datetime.strptime(target_datetime_str, '%d-%m-%Y %I:%M %p')
+        # Calculate the current time and round it down to the nearest 15-minute mark
+        current_time = dt_datetime.now()
+        rounded_time = current_time - timedelta(minutes=current_time.minute % 15,
+                                                seconds=current_time.second,
+                                                microseconds=current_time.microsecond)
         
         # Function to parse datetime with error handling
         def parse_datetime(date_str):
             try:
-                return dt_datetime.strptime(date_str.strip(), '%d-%m-%Y %I:%M %p')
+                return dt_datetime.strptime(date_str.strip(), '%d-%m-%Y %H:%M')
             except ValueError:
                 return None
         
@@ -76,15 +79,15 @@ def download_csv(chrome_driver_path, login_url, username, password, csv_file_nam
                 if len(row) > 0:
                     cell_value = row[0].strip()
                     cell_datetime = parse_datetime(cell_value)
-                    if cell_datetime and cell_datetime == target_datetime:
+                    if cell_datetime and cell_datetime <= rounded_time:
                         if len(row) > 1:
                             stockList.append(f"{row[1]}-EQ")
         
-        return stockList
+        return (stockList, rounded_time)
     
     except Exception as e:
         print(f"An error occurred: {e}")
-        return []
+        return ([], None)
     
     finally:
         driver.quit()
@@ -95,8 +98,10 @@ login_url = "https://chartink.com/login"
 username = "akashkharade.760@gmail.com"
 password = "7030232281"
 csv_file_name = "Backtest BB Blast_Omk, Technical Analysis Scanner.csv"
-target_datetime_str = dt_datetime.today().strftime('%d-%m-%Y') + " 10:15 am"
 
 # Call the function
-stock_list = download_csv(chrome_driver_path, login_url, username, password, csv_file_name, target_datetime_str)
-print(stock_list)
+stock_list, scan_time = download_csv(chrome_driver_path, login_url, username, password, csv_file_name)
+if scan_time:
+    print(f"Stocks scanned for {scan_time.strftime('%I:%M %p')}: {stock_list}")
+else:
+    print("No stocks found.")
