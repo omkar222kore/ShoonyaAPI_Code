@@ -125,7 +125,8 @@ def place_orders(target_datetime_str):
                 data.append({
                     "stock": symbol,
                     "stop_loss": stop_loss,
-                    "target": target
+                    "target": target,
+                    "quantity":Qty_Stock
                 })
 
             except Exception as e:

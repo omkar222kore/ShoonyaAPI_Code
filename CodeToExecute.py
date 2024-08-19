@@ -49,17 +49,32 @@ def check_file_exists(file_path):
 
 def main():
     # Define paths to the Python scripts
-    script1 = "E:\\Z_algo_Script\\TestingNewWay\\downloadCSV.py"
-    script2 = "E:\\Z_algo_Script\\TestingNewWay\\punch_orderUp.py"
+    script1 = "D:\\AA_trading_Algos\\ShoonyaAPI_Code\\downloadCSV.py"
+    script2 = "D:\\AA_trading_Algos\\ShoonyaAPI_Code\\punch_orderUp.py"
+    script3 = "D:\\AA_trading_Algos\\ShoonyaAPI_Code\\book_order.py"  # The new one-time run script
     downloads_folder = "C:\\Users\\omkar\\Downloads"
 
-    # Define the start time and end time for running the scripts
-    start_time = datetime.time(11,15)  # Specify the start time
-    end_time = datetime.time(14, 45)  # Specify the end time
+    # Define the start time and end time for running the first two scripts
+    start_time = datetime.time(10, 15)  # Specify the start time
+    end_time = datetime.time(11, 45)  # Specify the end time
     interval_minutes = 15  # Set the interval to 15 minutes
+
+    # Time to run script3 (10:15 AM)
+    script3_run_time = datetime.time(10, 15)
+    script3_executed = False  # To ensure it runs only once
 
     while True:
         now = datetime.datetime.now().time()
+
+        # Run script3 at 10:15 AM only once
+        if now >= script3_run_time and not script3_executed:
+            if check_file_exists(script3):
+                print(f"Running {script3} at 10:15 AM...")
+                run_python_script(script3)
+                print(f"Completed running {script3}")
+                script3_executed = True  # Mark script3 as executed
+
+        # Continue running the first two scripts within the specified time window
         if start_time <= now <= end_time:
             # Check if scripts exist
             if not all(check_file_exists(script) for script in [script1, script2]):
