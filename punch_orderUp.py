@@ -19,7 +19,7 @@ VC = 'FA74468_U'
 APP_KEY = 'c98e82a190da8181c80fb94cf0a31144'
 IMEI = 'abc1234'
 CSV_FILE_PATH = "C:\\Users\\omkar\\Downloads\\Backtest BB Blast_Omk, Technical Analysis Scanner.csv"
-SHARED_DATA_JSON = "E:\\Z_algo_Script\\TestingNewWay\\shared_data.json"
+SHARED_DATA_JSON = "D:\\AA_trading_Algos\ShoonyaAPI_Code\\shared_data.json"
 REMOVE_STOCKS = ['M&M-EQ', 'M&MFIN-EQ', 'J&KBANK-EQ']  # Stocks to remove
 
 # Initialize API
@@ -115,10 +115,8 @@ def place_orders(target_datetime_str):
                 print(f"LTP: {LTP}, Stop-Loss: {stop_loss}, Target: {target}")
                 
                 api.place_order(buy_or_sell='S', product_type='I', exchange='NSE', tradingsymbol=symbol,
-                      quantity=Qty_Stock, discloseqty=0, price_type='SL-LMT',
-                      price=target,  # Use target price or another logic
-                      trigger_price=stop_loss,  # Use stop_loss variable as trigger price
-                      retention='DAY', remarks='stop_loss_order')
+                      quantity=Qty_Stock, discloseqty=0, price_type='MKT', trigger_price=None,  # Use stop_loss variable as trigger price
+                      retention='DAY', remarks='Place_order')
                 
 
                 # Append the stock data to the JSON data

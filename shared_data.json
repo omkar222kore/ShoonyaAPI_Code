@@ -1,20 +1,32 @@
 ﻿[
     {
-        "stock": "GICRE-EQ",
-        "stop_loss": 399.3,
-        "target": 394.4,
-	"quantity":10
+        "stock": "PATANJALI-EQ",
+        "stop_loss": 1891.0,
+        "target": 1867.5,
+        "quantity": 5
     },
     {
-        "stock": "SAREGAMA-EQ",
-        "stop_loss": 531.1,
-        "target": 524.5,
-	"quantity":10
+        "stock": "VBL-EQ",
+        "stop_loss": 1528.9,
+        "target": 1509.9,
+        "quantity": 7
     },
     {
-        "stock": "JINDALSAW-EQ",
-        "stop_loss": 649.3,
-        "target": 641.2,
-	"quantity":10
+        "stock": "HINDALCO-EQ",
+        "stop_loss": 683.8,
+        "target": 675.2,
+        "quantity": 15
+    },
+    {
+        "stock": "UTIAMC-EQ",
+        "stop_loss": 1138.5,
+        "target": 1124.3,
+        "quantity": 9
+    },
+    {
+        "stock": "ADANIPORTS-EQ",
+        "stop_loss": 1515.8,
+        "target": 1496.9,
+        "quantity": 7
     }
 ]

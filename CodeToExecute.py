@@ -51,7 +51,6 @@ def main():
     # Define paths to the Python scripts
     script1 = "D:\\AA_trading_Algos\\ShoonyaAPI_Code\\downloadCSV.py"
     script2 = "D:\\AA_trading_Algos\\ShoonyaAPI_Code\\punch_orderUp.py"
-    script3 = "D:\\AA_trading_Algos\\ShoonyaAPI_Code\\book_order.py"  # The new one-time run script
     downloads_folder = "C:\\Users\\omkar\\Downloads"
 
     # Define the start time and end time for running the first two scripts
@@ -59,20 +58,8 @@ def main():
     end_time = datetime.time(11, 45)  # Specify the end time
     interval_minutes = 15  # Set the interval to 15 minutes
 
-    # Time to run script3 (10:15 AM)
-    script3_run_time = datetime.time(10, 15)
-    script3_executed = False  # To ensure it runs only once
-
     while True:
         now = datetime.datetime.now().time()
-
-        # Run script3 at 10:15 AM only once
-        if now >= script3_run_time and not script3_executed:
-            if check_file_exists(script3):
-                print(f"Running {script3} at 10:15 AM...")
-                run_python_script(script3)
-                print(f"Completed running {script3}")
-                script3_executed = True  # Mark script3 as executed
 
         # Continue running the first two scripts within the specified time window
         if start_time <= now <= end_time:
@@ -102,7 +89,7 @@ def main():
             next_execution_time = datetime.datetime.combine(datetime.date.today(), start_time)
             if now > end_time:
                 # If the current time is past the end time, schedule for the next day
-                next_execution_time += datetime.timedelta(seconds=10)
+                next_execution_time += datetime.timedelta(days=1)
             elif now > start_time:
                 # If the current time is between the start and end time, schedule for the next interval
                 next_execution_time = datetime.datetime.now() + datetime.timedelta(minutes=interval_minutes)
