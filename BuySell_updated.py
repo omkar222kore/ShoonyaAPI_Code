@@ -44,7 +44,7 @@ PNL_UPPER_THRESHOLD = 240
 SHIFT_SECONDS = 35
 
 logging.basicConfig(
-    filename='D:\\newRepo\\UpdatedCodeFiles\\trading_log.txt',
+    filename='D:\\AlgoRepo\\ShoonyaAPI_Code\\trading_log.txt',
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
     filemode='w'
@@ -187,7 +187,7 @@ def place_buy_orders_based_on_positions():
 
 # Scheduling Functions
 def schedule_place_orders():
-    specific_times = ["09:46:35", "10:1:35", "10:46:35"]
+    specific_times = ["09:46:30", "10:1:30", "10:46:30"]
     while True:
         now = dt_datetime.now()
         for target_time in specific_times:
