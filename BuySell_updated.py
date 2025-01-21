@@ -187,9 +187,15 @@ def place_buy_orders_based_on_positions():
 
 # Scheduling Functions
 def schedule_place_orders():
-    specific_times = ["09:46:30", "10:1:30", "10:46:30"]
+    specific_times = ["09:46:40", "10:01:40", "10:46:40"]
+    end_time = dt_datetime.combine(dt_datetime.now().date(), dt_datetime.strptime("15:15:00", "%H:%M:%S").time())
+
     while True:
         now = dt_datetime.now()
+        if now >= end_time:
+            logging.info("Stopping schedule_place_orders as it is past 3:15 PM.")
+            break
+
         for target_time in specific_times:
             target_datetime = dt_datetime.combine(now.date(), dt_datetime.strptime(target_time, "%H:%M:%S").time())
             if now < target_datetime:
@@ -200,12 +206,19 @@ def schedule_place_orders():
 
 def schedule_place_buy_orders_based_on_positions():
     start_time = dt_datetime.combine(dt_datetime.now().date(), dt_datetime.strptime("09:50:00", "%H:%M:%S").time())
+    end_time = dt_datetime.combine(dt_datetime.now().date(), dt_datetime.strptime("15:15:00", "%H:%M:%S").time())
+
     now = dt_datetime.now()
     if now < start_time:
         sleep_duration = (start_time - now).total_seconds()
         time.sleep(sleep_duration)
 
     while True:
+        now = dt_datetime.now()
+        if now >= end_time:
+            logging.info("Stopping schedule_place_buy_orders_based_on_positions as it is past 3:15 PM.")
+            break
+
         place_buy_orders_based_on_positions()
         time.sleep(60)  # Run every minute
 
