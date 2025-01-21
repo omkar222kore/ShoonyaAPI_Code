@@ -1,0 +1,5 @@
+2025-01-21 20:18:10,860 - INFO - No open positions.
+2025-01-21 20:19:10,996 - INFO - No open positions.
+2025-01-21 20:19:30,005 - INFO - Extracted stock list: ['PETRONET-EQ']
+2025-01-21 20:19:30,230 - INFO - Order placed for PETRONET-EQ. Qty: 61, Stop-Loss: 326.86, Target: 322.8
+2025-01-21 20:20:11,370 - INFO - No open positions.
