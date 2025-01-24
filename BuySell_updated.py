@@ -41,7 +41,6 @@ CSV_FILE_PATH = "C:\\Users\\omkar\\Downloads\\Backtest BB_Blast_Sell, Technical 
 REMOVE_STOCKS = ['M&M-EQ', 'M&MFIN-EQ', 'J&KBANK-EQ']
 PNL_LOWER_THRESHOLD = -120
 PNL_UPPER_THRESHOLD = 240
-SHIFT_SECONDS = 35
 
 logging.basicConfig(
     filename='D:\\AlgoRepo\\ShoonyaAPI_Code\\trading_log.txt',
@@ -158,27 +157,25 @@ def place_buy_orders_based_on_positions():
             return
 
         stock_names = df['tsym'].tolist()
-        rpnl_values = pd.to_numeric(df['rpnl'], errors='coerce').fillna(0).tolist()
-        quantities = pd.to_numeric(df['daysellqty'], errors='coerce').fillna(0).astype(int).tolist()
-
+        net_quantities = pd.to_numeric(df['netqty'], errors='coerce').fillna(0).astype(int).tolist()
+        urmtom_values = pd.to_numeric(df['urmtom'], errors='coerce').fillna(0).tolist()
+        
         for i, stock in enumerate(stock_names):
-            if stock in processed_stocks:
-                continue
-            if rpnl_values[i] <= PNL_LOWER_THRESHOLD or rpnl_values[i] >= PNL_UPPER_THRESHOLD:
+            if urmtom_values[i] <= PNL_LOWER_THRESHOLD or urmtom_values[i] >= PNL_UPPER_THRESHOLD and net_quantities[i]!=0:
                 try:
                     api.place_order(
                         buy_or_sell='B',
                         product_type='I',
                         exchange='NSE',
                         tradingsymbol=stock,
-                        quantity=quantities[i],
+                        quantity=net_quantities[i],
                         discloseqty=0,
                         price_type='MKT',
                         retention='DAY',
                         remarks='my_order_001'
                     )
                     processed_stocks.add(stock)
-                    logging.info(f"Buy order placed for {stock}. Qty: {quantities[i]}, PnL: {rpnl_values[i]}")
+                    logging.info(f"Buy order placed for {stock}. Qty: {net_quantities[i]}, PnL: {rpnl_values[i]}")
                 except Exception as e:
                     logging.error(f"Error placing buy order for {stock}: {e}")
     except Exception as e:
@@ -187,7 +184,7 @@ def place_buy_orders_based_on_positions():
 
 # Scheduling Functions
 def schedule_place_orders():
-    specific_times = ["09:46:40", "10:01:40", "10:46:40"]
+    specific_times = ["09:46:35", "10:01:35", "10:46:35"]
     end_time = dt_datetime.combine(dt_datetime.now().date(), dt_datetime.strptime("15:15:00", "%H:%M:%S").time())
 
     while True:
@@ -220,7 +217,7 @@ def schedule_place_buy_orders_based_on_positions():
             break
 
         place_buy_orders_based_on_positions()
-        time.sleep(60)  # Run every minute
+        time.sleep(30)  # Run every minute
 
 
 # Main Execution
