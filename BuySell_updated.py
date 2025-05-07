@@ -39,8 +39,8 @@ else:
 # File and Logging Configuration
 CSV_FILE_PATH = "C:\\Users\\omkar\\Downloads\\Backtest BB_Blast_Sell, Technical Analysis Scanner.csv"
 REMOVE_STOCKS = ['M&M-EQ', 'M&MFIN-EQ', 'J&KBANK-EQ']
-PNL_LOWER_THRESHOLD = -50
-PNL_UPPER_THRESHOLD = 50
+PNL_LOWER_THRESHOLD = -120
+PNL_UPPER_THRESHOLD = 240
 
 logging.basicConfig(
     filename='D:\\AlgoRepo\\ShoonyaAPI_Code\\trading_log.txt',
