@@ -39,8 +39,8 @@ else:
 # File and Logging Configuration
 CSV_FILE_PATH = "C:\\Users\\omkar\\Downloads\\Backtest BB_Blast_Sell, Technical Analysis Scanner.csv"
 REMOVE_STOCKS = ['M&M-EQ', 'M&MFIN-EQ', 'J&KBANK-EQ']
-PNL_LOWER_THRESHOLD = -120
-PNL_UPPER_THRESHOLD = 240
+PNL_LOWER_THRESHOLD = -50
+PNL_UPPER_THRESHOLD = 50
 
 logging.basicConfig(
     filename='D:\\AlgoRepo\\ShoonyaAPI_Code\\trading_log.txt',
@@ -160,6 +160,7 @@ def place_buy_orders_based_on_positions():
         net_quantities = pd.to_numeric(df['netqty'], errors='coerce').fillna(0).astype(int).tolist()
         urmtom_values = pd.to_numeric(df['urmtom'], errors='coerce').fillna(0).tolist()
         
+        
         for i, stock in enumerate(stock_names):
             if urmtom_values[i] <= PNL_LOWER_THRESHOLD or urmtom_values[i] >= PNL_UPPER_THRESHOLD and net_quantities[i]!=0:
                 try:
@@ -168,7 +169,7 @@ def place_buy_orders_based_on_positions():
                         product_type='I',
                         exchange='NSE',
                         tradingsymbol=stock,
-                        quantity=net_quantities[i],
+                        quantity=abs(net_quantities[i]),
                         discloseqty=0,
                         price_type='MKT',
                         retention='DAY',
@@ -184,7 +185,7 @@ def place_buy_orders_based_on_positions():
 
 # Scheduling Functions
 def schedule_place_orders():
-    specific_times = ["09:46:35", "10:01:35", "10:46:35"]
+    specific_times = ["09:46:55", "10:01:55", "10:46:55"]
     end_time = dt_datetime.combine(dt_datetime.now().date(), dt_datetime.strptime("15:15:00", "%H:%M:%S").time())
 
     while True:
