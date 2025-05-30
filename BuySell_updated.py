@@ -37,7 +37,7 @@ else:
     exit()
 
 # File and Logging Configuration
-CSV_FILE_PATH = "C:\\Users\\omkar\\Downloads\\Backtest BB_Blast_Sell, Technical Analysis Scanner.csv"
+CSV_FILE_PATH = "C:\\Users\\omkar\\Downloads\\Backtest bb_blast_sell_Combined, Technical Analysis Scanner.csv"
 REMOVE_STOCKS = ['M&M-EQ', 'M&MFIN-EQ', 'J&KBANK-EQ']
 PNL_LOWER_THRESHOLD = -120
 PNL_UPPER_THRESHOLD = 240
@@ -57,14 +57,15 @@ processed_stocks = set()  # Track processed stocks
 
 
 # Helper Functions
-def parse_datetime(date_str):
-    formats = ["%d-%m-%Y %I:%M %p", "%d-%m-%Y %H:%M"]
-    for fmt in formats:
+def parse_datetime(dt_str):
+    dt_str = dt_str.strip().lower()
+    for fmt in ('%d-%m-%Y %H:%M', '%d-%m-%Y %I:%M %p'):
         try:
-            return dt_datetime.strptime(date_str, fmt)
+            return dt_datetime.strptime(dt_str, fmt)
         except ValueError:
             continue
-    raise ValueError(f"Date parsing error: time data '{date_str}' does not match any of the known formats.")
+    raise ValueError(f"Unsupported datetime format: {dt_str}")
+    # raise ValueError(f"Date parsing error: time data '{date_str}' does not match any of the known formats.")
 
 
 def round_down_to_nearest_15_minutes(dt):
@@ -72,8 +73,10 @@ def round_down_to_nearest_15_minutes(dt):
 
 
 def get_previous_timestamp():
-    now = dt_datetime.now() - timedelta(minutes=0)
-    return round_down_to_nearest_15_minutes(now).strftime('%d-%m-%Y %I:%M %p')
+    now = dt_datetime.now()
+    rounded = round_down_to_nearest_15_minutes(now)
+    previous_15_min = rounded - timedelta(minutes=15)
+    return previous_15_min.strftime('%d-%m-%Y %I:%M %p')
 
 
 # Core Functions
@@ -96,13 +99,14 @@ def extract_stock_list_from_csv(csv_file_path, target_datetime_str):
     return stock_list
 
 
+
 def place_orders(target_datetime_str):
     global stocksList, slArray, tgtArray
 
     stocksList = extract_stock_list_from_csv(CSV_FILE_PATH, target_datetime_str)
     stocksList = [symbol for symbol in stocksList if symbol not in REMOVE_STOCKS]
 
-    if len(stocksList) > 2:
+    if len(stocksList) > 3:
         stocksList = []
         slArray = []
         tgtArray = []
@@ -114,6 +118,7 @@ def place_orders(target_datetime_str):
     else:
         slArray = []
         tgtArray = []
+        # 
         for symbol in stocksList:
             try:
                 quote = api.get_quotes(exchange='NSE', token=symbol)
@@ -131,7 +136,7 @@ def place_orders(target_datetime_str):
                     product_type='I',
                     exchange='NSE',
                     tradingsymbol=symbol,
-                    quantity=quantity,
+                    quantity=abs(quantity),
                     discloseqty=0,
                     price_type='MKT',
                     retention='DAY',
@@ -141,7 +146,7 @@ def place_orders(target_datetime_str):
             except Exception as e:
                 logging.error(f"Error placing order for {symbol}: {e}")
 
-
+# abs(quantity)
 def place_buy_orders_based_on_positions():
     global processed_stocks
 
@@ -160,7 +165,7 @@ def place_buy_orders_based_on_positions():
         net_quantities = pd.to_numeric(df['netqty'], errors='coerce').fillna(0).astype(int).tolist()
         urmtom_values = pd.to_numeric(df['urmtom'], errors='coerce').fillna(0).tolist()
         
-        
+        # quantity=abs(net_quantities[i]),
         for i, stock in enumerate(stock_names):
             if urmtom_values[i] <= PNL_LOWER_THRESHOLD or urmtom_values[i] >= PNL_UPPER_THRESHOLD and net_quantities[i]!=0:
                 try:
@@ -175,6 +180,7 @@ def place_buy_orders_based_on_positions():
                         retention='DAY',
                         remarks='my_order_001'
                     )
+                    print(f"Buy order placed for {stock}. Qty: {abs(net_quantities[i])} with PnL: {urmtom_values[i]} and  at price: {api.get_quotes(exchange='NSE', token=stock)['lp']}")
                     processed_stocks.add(stock)
                     logging.info(f"Buy order placed for {stock}. Qty: {net_quantities[i]}, PnL: {rpnl_values[i]}")
                 except Exception as e:
@@ -186,6 +192,7 @@ def place_buy_orders_based_on_positions():
 # Scheduling Functions
 def schedule_place_orders():
     specific_times = ["09:46:55", "10:01:55", "10:46:55"]
+    # specific_times = ["14:52:15", "14:56:55", "15:01:55"]
     end_time = dt_datetime.combine(dt_datetime.now().date(), dt_datetime.strptime("15:15:00", "%H:%M:%S").time())
 
     while True:
