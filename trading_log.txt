@@ -1,4 +1,1 @@
-2025-05-30 14:52:15,052 - INFO - Extracted stock list: ['INDHOTEL-EQ', 'HUDCO-EQ', 'DLF-EQ']
-2025-05-30 14:52:15,194 - INFO - Order placed for INDHOTEL-EQ. Qty: 26, Stop-Loss: 775.78, Target: 766.12
-2025-05-30 14:52:15,294 - INFO - Order placed for HUDCO-EQ. Qty: 82, Stop-Loss: 243.96, Target: 240.93
-2025-05-30 14:52:15,392 - INFO - Order placed for DLF-EQ. Qty: 25, Stop-Loss: 803.65, Target: 793.65
+2026-03-30 08:30:43,968 - INFO - Extracted stock list: []

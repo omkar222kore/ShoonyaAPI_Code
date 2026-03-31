@@ -1,0 +1,30 @@
+# Data directories
+Stocks_DATA/
+Testing_Use/Stocks_DATA/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+
+# Credentials (sensitive data)
+cred.yml
+
+# Logs
+trading_log.txt
+*.log
+
+# DS Store
+.DS_Store

@@ -74,9 +74,16 @@ def round_down_to_nearest_15_minutes(dt):
 
 def get_previous_timestamp():
     now = dt_datetime.now()
-    rounded = round_down_to_nearest_15_minutes(now)
+    # Round UP to the next 15-minute mark
+    minute = ((now.minute // 15) + 1) * 15
+    if minute == 60:
+        rounded = now.replace(hour=(now.hour + 1) % 24, minute=0, second=0, microsecond=0)
+    else:
+        rounded = now.replace(minute=minute, second=0, microsecond=0)
+    # Subtract 15 minutes to get the "previous" cycle
     previous_15_min = rounded - timedelta(minutes=15)
     return previous_15_min.strftime('%d-%m-%Y %I:%M %p')
+
 
 
 # Core Functions
@@ -191,7 +198,7 @@ def place_buy_orders_based_on_positions():
 
 # Scheduling Functions
 def schedule_place_orders():
-    specific_times = ["09:46:55", "10:01:55", "10:46:55"]
+    specific_times = ["09:46:55", "10:03:55", "10:46:55"]
     # specific_times = ["14:52:15", "14:56:55", "15:01:55"]
     end_time = dt_datetime.combine(dt_datetime.now().date(), dt_datetime.strptime("15:15:00", "%H:%M:%S").time())
 
