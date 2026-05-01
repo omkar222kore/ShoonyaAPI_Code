@@ -1,3 +1,0 @@
-2025-05-07 13:44:31,448 - ERROR - Error placing buy order for SBIN-EQ: name 'rpnl_values' is not defined
-2025-05-07 15:15:00,000 - INFO - Stopping schedule_place_orders as it is past 3:15 PM.
-2025-05-07 15:15:06,695 - INFO - Stopping schedule_place_buy_orders_based_on_positions as it is past 3:15 PM.
