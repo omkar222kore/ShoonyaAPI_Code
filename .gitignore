@@ -1,7 +1,7 @@
 # Data directories
 Stocks_DATA/
 Testing_Use/Stocks_DATA/
-
+Testing_Use/Execution/
 # Virtual environments
 .venv/
 venv/

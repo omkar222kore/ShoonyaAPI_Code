@@ -105,7 +105,7 @@ def extract_stock_list_from_csv(csv_file_path, target_datetime_str):
     logging.info(f"Extracted stock list: {stock_list}")
     return stock_list
 
-
+tradingCap=20000
 
 def place_orders(target_datetime_str):
     global stocksList, slArray, tgtArray
@@ -133,7 +133,7 @@ def place_orders(target_datetime_str):
 
                 stop_loss = round(LTP * 1.0045, 2)
                 target = round(LTP * 0.992, 2)
-                quantity = round(20000 / LTP)
+                quantity = round(tradingCap / LTP)
 
                 slArray.append(stop_loss)
                 tgtArray.append(target)
