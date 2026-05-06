@@ -39,8 +39,9 @@ else:
 # File and Logging Configuration
 CSV_FILE_PATH = "C:\\Users\\omkar\\Downloads\\Backtest bb_blast_sell_Combined, Technical Analysis Scanner.csv"
 REMOVE_STOCKS = ['M&M-EQ', 'M&MFIN-EQ', 'J&KBANK-EQ']
-PNL_LOWER_THRESHOLD = -120
-PNL_UPPER_THRESHOLD = 240
+tradingCap=20000
+PNL_LOWER_THRESHOLD =  -int(tradingCap*0.006)
+PNL_UPPER_THRESHOLD = int(tradingCap*0.01)
 
 logging.basicConfig(
     filename='D:\\AlgoRepo\\ShoonyaAPI_Code\\trading_log.txt',
@@ -105,7 +106,7 @@ def extract_stock_list_from_csv(csv_file_path, target_datetime_str):
     logging.info(f"Extracted stock list: {stock_list}")
     return stock_list
 
-tradingCap=20000
+
 
 def place_orders(target_datetime_str):
     global stocksList, slArray, tgtArray
@@ -171,9 +172,13 @@ def place_buy_orders_based_on_positions():
         stock_names = df['tsym'].tolist()
         net_quantities = pd.to_numeric(df['netqty'], errors='coerce').fillna(0).astype(int).tolist()
         urmtom_values = pd.to_numeric(df['urmtom'], errors='coerce').fillna(0).tolist()
+        net_price=  pd.to_numeric(df['netavgprc'], errors='coerce').fillna(0).astype(float).tolist()
+        
+        
         
         # quantity=abs(net_quantities[i]),
         for i, stock in enumerate(stock_names):
+            
             if urmtom_values[i] <= PNL_LOWER_THRESHOLD or urmtom_values[i] >= PNL_UPPER_THRESHOLD and net_quantities[i]!=0:
                 try:
                     api.place_order(
