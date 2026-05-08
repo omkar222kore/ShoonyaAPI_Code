@@ -1,246 +1,318 @@
-import csv
-from datetime import datetime as dt_datetime, timedelta
-import time
-import threading
+#############################################
+#############################################
+
+    #final Working
+
+#############################################
+#############################################
+
+
+
+
+# ==================== SIMPLIFIED TRADING SYSTEM ====================
+
 import logging
+import os
+import threading
+import time
+from datetime import datetime
 import pandas as pd
-from NorenRestApiPy.NorenApi import NorenApi
 import pyotp
 import yaml
+from NorenRestApiPy.NorenApi import NorenApi
+from flask import Flask, request
 
 
+# ==================== LOGIN ====================
 class ShoonyaApiPy(NorenApi):
     def __init__(self):
-        super().__init__(host='https://api.shoonya.com/NorenWClientTP/', websocket='wss://api.shoonya.com/NorenWSTP/')
+        super().__init__(host='https://trade.shoonya.com/NorenWClientWeb/', 
+                        websocket='wss://trade.shoonya.com/NorenWSWeb/')
 
-
-# Initialize API
 api = ShoonyaApiPy()
+
 with open('cred.yml') as f:
     cred = yaml.load(f, Loader=yaml.FullLoader)
 
-TOKEN = cred['factor2']
-otp = pyotp.TOTP(TOKEN).now()
-ret = api.login(
-    userid=cred['user'],
-    password=cred['pwd'],
-    twoFA=otp,
-    vendor_code=cred['vc'],
-    api_secret=cred['apikey'],
-    imei=cred['imei']
-)
+SuperToken = "5acfc58a589a3623084aca54339906f10ea8c31ae98d6dc4c851f228319ff164"
+userId = cred['user']
+Passwrd = cred['pwd']
+
+print("=" * 80)
+print("🔐 LOGGING INTO SHOONYA BROKER...")
+print("=" * 80)
+
+ret = api.set_session(userId, Passwrd, SuperToken)
 
 if ret:
-    print("Login Successful")
+    print("✅ Login Successful!")
+    print(f"   User: {userId}")
 else:
-    print("Login Failed")
+    print("❌ Login Failed!")
     exit()
 
-# File and Logging Configuration
-CSV_FILE_PATH = "C:\\Users\\omkar\\Downloads\\Backtest bb_blast_sell_Combined, Technical Analysis Scanner.csv"
-REMOVE_STOCKS = ['M&M-EQ', 'M&MFIN-EQ', 'J&KBANK-EQ']
-tradingCap=20000
-PNL_LOWER_THRESHOLD =  -int(tradingCap*0.006)
-PNL_UPPER_THRESHOLD = int(tradingCap*0.01)
+# ==================== FLASK APP ====================
+app = Flask(__name__)
+logging.basicConfig(level=logging.INFO)
 
-logging.basicConfig(
-    filename='D:\\AlgoRepo\\ShoonyaAPI_Code\\trading_log.txt',
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s',
-    filemode='w'
-)
+processed_stocks = set()
 
-# Global Variables
-stocksList = []
-slArray = []
-tgtArray = []
-processed_stocks = set()  # Track processed stocks
+VALID_TIME_WINDOWS = [
+    ("09:45", "10:00"),
+    ("10:15", "10:30"),
+    ("10:30", "10:45"),
+    ("10:45", "11:00"),
+    ("13:00", "13:15")
+]
+
+MAX_STOCKS_PER_TIME = 3
+TRADING_CAP_PER_STOCK = 20000
+
+# Load token Excel once at startup
+excel_file = r"C:\Users\omkar\Downloads\NSE_symbols_filtered.xlsx"
+token_df = pd.read_excel(excel_file)
+token_df["TradingSymbol"] = token_df["TradingSymbol"].astype(str).str.strip().str.upper()
 
 
-# Helper Functions
-def parse_datetime(dt_str):
-    dt_str = dt_str.strip().lower()
-    for fmt in ('%d-%m-%Y %H:%M', '%d-%m-%Y %I:%M %p'):
+def is_time_in_valid_window(time_str):
+    """Check if time is in valid window"""
+    check_time = datetime.strptime(time_str, "%H:%M").time()
+    for start_str, end_str in VALID_TIME_WINDOWS:
+        start_time = datetime.strptime(start_str, "%H:%M").time()
+        end_time = datetime.strptime(end_str, "%H:%M").time()
+        if start_time <= check_time <= end_time:
+            return True
+    return False
+
+
+def parse_webhook_payload(data):
+    """Parse webhook payload"""
+    if not data:
+        raise ValueError("Webhook payload is empty")
+
+    stocks_raw = data.get("stocks", "")
+    prices_raw = data.get("trigger_prices", "")
+    triggered_at = data.get("triggered_at", "")
+
+    if not stocks_raw or not prices_raw or not triggered_at:
+        raise ValueError("Missing required fields in webhook")
+
+    symbols = [s.strip() for s in stocks_raw.split(",") if s.strip()]
+    prices = [p.strip() for p in prices_raw.split(",") if p.strip()]
+
+    if len(symbols) != len(prices):
+        raise ValueError(f"Stocks count and price count mismatch")
+
+    trigger_time = datetime.strptime(triggered_at.strip().upper(), "%I:%M %p").strftime("%H:%M")
+
+    parsed_stocks = []
+    for symbol, price in zip(symbols, prices):
+        parsed_stocks.append({
+            "symbol": symbol,
+            "trigger_price": float(price),
+            "time": trigger_time,
+            "scan_name": data.get("scan_name", ""),
+            "scan_url": data.get("scan_url", ""),
+            "alert_name": data.get("alert_name", "")
+        })
+
+    return parsed_stocks
+
+
+def filter_stocks(stocks):
+    """Filter stocks by time window and count"""
+    if not stocks:
+        print("⏭️  No stocks received")
+        return []
+
+    if len(stocks) > MAX_STOCKS_PER_TIME:
+        print(f"⏭️  Received {len(stocks)} stocks (max {MAX_STOCKS_PER_TIME}). Skipping.")
+        return []
+
+    for stock in stocks:
+        time = stock.get('time', '').strip()
+        if not is_time_in_valid_window(time):
+            print(f"⏭️  Time {time} not in valid windows. Skipping.")
+            return []
+
+    print(f"✅ Filtered {len(stocks)} stocks")
+    return stocks
+
+
+def place_sell_orders(stocks):
+    """Place SELL orders immediately for filtered stocks"""
+    print(f"\n📥 PLACING SELL ORDERS:")
+    print("-" * 80)
+
+    for stock in stocks:
+        symbol = stock.get('symbol', 'UNKNOWN').strip()
+        symbol_eq = f"{symbol}-EQ"
+
         try:
-            return dt_datetime.strptime(dt_str, fmt)
-        except ValueError:
-            continue
-    raise ValueError(f"Unsupported datetime format: {dt_str}")
-    # raise ValueError(f"Date parsing error: time data '{date_str}' does not match any of the known formats.")
+            match = token_df[token_df["TradingSymbol"] == symbol_eq.upper()]
+
+            if match.empty:
+                print(f"❌ {symbol_eq}: Token not found in Excel")
+                continue
+
+            token = str(match.iloc[0]["Token"])
+
+            quote = api.get_quotes(exchange='NSE', token=token)
+
+            if not quote or quote.get("stat") != "Ok":
+                print(f"❌ {symbol_eq}: Quote failed - {quote}")
+                continue
+
+            current_ltp = float(quote.get("lp", 0))
+
+            if current_ltp <= 0:
+                print(f"❌ {symbol_eq}: Invalid price")
+                continue
+
+            quantity = int(TRADING_CAP_PER_STOCK / current_ltp)
+
+            response = api.place_order(
+                buy_or_sell='S',
+                product_type='I',
+                exchange='NSE',
+                tradingsymbol=symbol_eq,
+                quantity=quantity,
+                discloseqty=0,
+                price_type='MKT',
+                retention='DAY',
+                remarks='Webhook_Sell'
+            )
+
+            order_id = response.get('norenordno')
+
+            if order_id:
+                print(f"✅ SELL | {symbol_eq} | Price: {current_ltp:.2f} | Qty: {quantity} | SL: {current_ltp * 1.006:.2f} | TP: {current_ltp * 0.992:.2f} | Order ID: {order_id}")
+            else:
+                print(f"❌ {symbol_eq}: Order failed - {response.get('emsg', 'Unknown error')}")
+
+        except Exception as e:
+            print(f"❌ {symbol}: {str(e)[:80]}")
 
 
-def round_down_to_nearest_15_minutes(dt):
-    return dt.replace(minute=(dt.minute // 15) * 15, second=0, microsecond=0)
-
-
-def get_previous_timestamp():
-    now = dt_datetime.now()
-    # Round UP to the next 15-minute mark
-    minute = ((now.minute // 15) + 1) * 15
-    if minute == 60:
-        rounded = now.replace(hour=(now.hour + 1) % 24, minute=0, second=0, microsecond=0)
-    else:
-        rounded = now.replace(minute=minute, second=0, microsecond=0)
-    # Subtract 15 minutes to get the "previous" cycle
-    previous_15_min = rounded - timedelta(minutes=15)
-    return previous_15_min.strftime('%d-%m-%Y %I:%M %p')
-
-
-
-# Core Functions
-def extract_stock_list_from_csv(csv_file_path, target_datetime_str):
-    stock_list = []
+@app.route('/webhook', methods=['POST'])
+def webhook_handler():
+    """Webhook endpoint"""
     try:
-        target_datetime = parse_datetime(target_datetime_str)
-        with open(csv_file_path, mode='r', encoding='utf-8-sig') as file:
-            reader = csv.DictReader(file)
-            for row in reader:
-                try:
-                    row_datetime = parse_datetime(row['date'])
-                except ValueError:
-                    continue
-                if row_datetime == target_datetime:
-                    stock_list.append(f"{row['symbol']}-EQ")
+        data = request.json
+        print(f"\n{'='*80}")
+        print(f"📡 WEBHOOK RECEIVED - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+        print(f"{'='*80}")
+
+        parsed_stocks = parse_webhook_payload(data)
+        filtered_stocks = filter_stocks(parsed_stocks)
+
+        if not filtered_stocks:
+            print("⏭️  No stocks passed filter")
+            return {"status": "no_match", "received": len(parsed_stocks), "filtered": 0}, 200
+
+        place_sell_orders(filtered_stocks)
+
+        return {"status": "success", "received": len(parsed_stocks), "placed": len(filtered_stocks)}, 200
+
     except Exception as e:
-        logging.error(f"Error extracting stock list: {e}")
-    logging.info(f"Extracted stock list: {stock_list}")
-    return stock_list
+        print(f"❌ Webhook error: {e}")
+        return {"status": "error", "message": str(e)}, 400
 
 
+tradingCap = 20000
+PNL_LOWER_THRESHOLD = -(int(tradingCap * 0.006))
+PNL_UPPER_THRESHOLD = int(tradingCap * 0.01)
 
-def place_orders(target_datetime_str):
-    global stocksList, slArray, tgtArray
+stop_monitor = False
 
-    stocksList = extract_stock_list_from_csv(CSV_FILE_PATH, target_datetime_str)
-    stocksList = [symbol for symbol in stocksList if symbol not in REMOVE_STOCKS]
 
-    if len(stocksList) > 3:
-        stocksList = []
-        slArray = []
-        tgtArray = []
-        logging.info("More than 3 stocks found. Clearing stock list.")
-    elif not stocksList:
-        slArray = []
-        tgtArray = []
-        logging.info("No stocks found. Clearing stock list.")
-    else:
-        slArray = []
-        tgtArray = []
-        # 
-        for symbol in stocksList:
-            try:
-                quote = api.get_quotes(exchange='NSE', token=symbol)
-                LTP = float(quote["lp"])
-
-                stop_loss = round(LTP * 1.0045, 2)
-                target = round(LTP * 0.992, 2)
-                quantity = round(tradingCap / LTP)
-
-                slArray.append(stop_loss)
-                tgtArray.append(target)
-
-                api.place_order(
-                    buy_or_sell='S',
-                    product_type='I',
-                    exchange='NSE',
-                    tradingsymbol=symbol,
-                    quantity=abs(quantity),
-                    discloseqty=0,
-                    price_type='MKT',
-                    retention='DAY',
-                    remarks='Place_order'
-                )
-                logging.info(f"Order placed for {symbol}. Qty: {quantity}, Stop-Loss: {stop_loss}, Target: {target}")
-            except Exception as e:
-                logging.error(f"Error placing order for {symbol}: {e}")
-
-# abs(quantity)
-def place_buy_orders_based_on_positions():
+def monitor_trades():
+    """Monitor trades every 30 seconds"""
     global processed_stocks
+    global stop_monitor
 
-    try:
-        positions = api.get_positions()
-        if not positions:
-            logging.info("No open positions.")
-            return
+    while not stop_monitor:
+        print("its running")
 
-        df = pd.DataFrame(positions)
-        if 'tsym' not in df.columns or 'rpnl' not in df.columns or 'daysellqty' not in df.columns:
-            logging.error("Invalid positions data.")
-            return
+        try:
+            positions = api.get_positions()
 
-        stock_names = df['tsym'].tolist()
-        net_quantities = pd.to_numeric(df['netqty'], errors='coerce').fillna(0).astype(int).tolist()
-        urmtom_values = pd.to_numeric(df['urmtom'], errors='coerce').fillna(0).tolist()
-        net_price=  pd.to_numeric(df['netavgprc'], errors='coerce').fillna(0).astype(float).tolist()
-        
-        
-        
-        # quantity=abs(net_quantities[i]),
-        for i, stock in enumerate(stock_names):
-            
-            if urmtom_values[i] <= PNL_LOWER_THRESHOLD or urmtom_values[i] >= PNL_UPPER_THRESHOLD and net_quantities[i]!=0:
-                try:
-                    api.place_order(
-                        buy_or_sell='B',
-                        product_type='I',
-                        exchange='NSE',
-                        tradingsymbol=stock,
-                        quantity=abs(net_quantities[i]),
-                        discloseqty=0,
-                        price_type='MKT',
-                        retention='DAY',
-                        remarks='my_order_001'
-                    )
-                    print(f"Buy order placed for {stock}. Qty: {abs(net_quantities[i])} with PnL: {urmtom_values[i]} and  at price: {api.get_quotes(exchange='NSE', token=stock)['lp']}")
-                    processed_stocks.add(stock)
-                    logging.info(f"Buy order placed for {stock}. Qty: {net_quantities[i]}, PnL: {rpnl_values[i]}")
-                except Exception as e:
-                    logging.error(f"Error placing buy order for {stock}: {e}")
-    except Exception as e:
-        logging.error(f"Error in place_buy_orders_based_on_positions: {e}")
+            if not positions:
+                logging.info("No open positions.")
+                time.sleep(30)
+                continue
 
+            df = pd.DataFrame(positions)
 
-# Scheduling Functions
-def schedule_place_orders():
-    specific_times = ["09:46:55", "10:03:55", "10:46:55"]
-    # specific_times = ["14:52:15", "14:56:55", "15:01:55"]
-    end_time = dt_datetime.combine(dt_datetime.now().date(), dt_datetime.strptime("15:15:00", "%H:%M:%S").time())
+            required_cols = ['tsym', 'netqty', 'urmtom']
 
-    while True:
-        now = dt_datetime.now()
-        if now >= end_time:
-            logging.info("Stopping schedule_place_orders as it is past 3:15 PM.")
-            break
+            if not all(col in df.columns for col in required_cols):
+                logging.error(f"Invalid positions data. Missing columns. Available: {df.columns.tolist()}")
+                time.sleep(30)
+                continue
 
-        for target_time in specific_times:
-            target_datetime = dt_datetime.combine(now.date(), dt_datetime.strptime(target_time, "%H:%M:%S").time())
-            if now < target_datetime:
-                sleep_duration = (target_datetime - now).total_seconds()
-                time.sleep(sleep_duration)
-                place_orders(get_previous_timestamp())
+            stock_names = df['tsym'].tolist()
+            net_quantities = pd.to_numeric(df['netqty'], errors='coerce').fillna(0).astype(int).tolist()
+            urmtom_values = pd.to_numeric(df['urmtom'], errors='coerce').fillna(0).tolist()
 
+            for i, stock in enumerate(stock_names):
+                stock = str(stock).strip().upper()
 
-def schedule_place_buy_orders_based_on_positions():
-    start_time = dt_datetime.combine(dt_datetime.now().date(), dt_datetime.strptime("09:50:00", "%H:%M:%S").time())
-    end_time = dt_datetime.combine(dt_datetime.now().date(), dt_datetime.strptime("15:15:00", "%H:%M:%S").time())
+                if stock in processed_stocks:
+                    continue
 
-    now = dt_datetime.now()
-    if now < start_time:
-        sleep_duration = (start_time - now).total_seconds()
-        time.sleep(sleep_duration)
+                if net_quantities[i] != 0 and (
+                    urmtom_values[i] <= PNL_LOWER_THRESHOLD
+                    or urmtom_values[i] >= PNL_UPPER_THRESHOLD
+                ):
+                    try:
+                        response = api.place_order(
+                            buy_or_sell='B',
+                            product_type='I',
+                            exchange='NSE',
+                            tradingsymbol=stock,
+                            quantity=abs(net_quantities[i]),
+                            discloseqty=0,
+                            price_type='MKT',
+                            retention='DAY',
+                            remarks='my_order_001'
+                        )
 
-    while True:
-        now = dt_datetime.now()
-        if now >= end_time:
-            logging.info("Stopping schedule_place_buy_orders_based_on_positions as it is past 3:15 PM.")
-            break
+                        if response and response.get("norenordno"):
+                            print(
+                                f"Buy order placed for {stock}. "
+                                f"Qty: {abs(net_quantities[i])} "
+                                f"with PnL: {urmtom_values[i]}"
+                            )
 
-        place_buy_orders_based_on_positions()
-        time.sleep(30)  # Run every minute
+                            processed_stocks.add(stock)
+
+                            logging.info(
+                                f"Buy order placed for {stock}. "
+                                f"Qty: {net_quantities[i]}, "
+                                f"PnL: {urmtom_values[i]}"
+                            )
+                        else:
+                            logging.error(f"Buy order failed for {stock}. Response: {response}")
+
+                    except Exception as e:
+                        logging.error(f"Error placing buy order for {stock}: {e}")
+
+        except Exception as e:
+            logging.error(f"Error in monitor_trades: {e}")
+
+        time.sleep(30)
 
 
-# Main Execution
-if __name__ == "__main__":
-    threading.Thread(target=schedule_place_orders).start()
-    threading.Thread(target=schedule_place_buy_orders_based_on_positions).start()
+# ==================== START SYSTEM ====================
+print("\n" + "="*80)
+print("🚀 TRADING SYSTEM STARTED - SIMPLIFIED")
+print("="*80)
+print("="*80 + "\n")
+
+monitor_thread = threading.Thread(target=monitor_trades, daemon=True)
+monitor_thread.start()
+print("✅ Monitor thread started")
+
+print("⏳ Starting webhook server on port 5000...")
+app.run(host='0.0.0.0', port=5000, debug=False)
