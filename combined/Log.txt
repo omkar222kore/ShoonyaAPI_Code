@@ -1,0 +1,500 @@
+[15:31:20] [SHOONYA] PAPER POSITION: NONE
+[15:31:20] [SHOONYA] CRYPTO_PNL: 4.68
+[15:31:20] [SHOONYA] No open positions
+[15:31:22] [SHOONYA] CRYPTO_PNL: 4.68
+[15:31:24] [SHOONYA] CRYPTO_PNL: 4.68
+[15:31:25] [SHOONYA] 
+[15:31:25] [SHOONYA] ====================================================================================================
+[15:31:25] [SHOONYA] MONITOR CYCLE #5712 | TIME: 2026-06-14 15:31:25
+[15:31:25] [SHOONYA] ====================================================================================================
+[15:31:26] [SHOONYA] SHOONYA PnL:     0.00  |  PAPER PnL:     4.68
+[15:31:26] [SHOONYA] SHOONYA: CONNECTED
+[15:31:26] [SHOONYA] PAPER POSITION: NONE
+[15:31:26] [SHOONYA] CRYPTO_PNL: 4.68
+[15:31:26] [SHOONYA] No open positions
+[15:31:28] [SHOONYA] CRYPTO_PNL: 4.68
+[15:31:30] [SHOONYA] CRYPTO_PNL: 4.68
+[15:31:31] [SHOONYA] 
+[15:31:31] [SHOONYA] ====================================================================================================
+[15:31:31] [SHOONYA] MONITOR CYCLE #5713 | TIME: 2026-06-14 15:31:31
+[15:31:31] [SHOONYA] ====================================================================================================
+[15:31:31] [NGROK] New URL: https://preheated-viscosity-enclosure.ngrok-free.dev/webhook
+[15:31:31] [NGROK] Auto-copied to clipboard — paste into TradingView!
+[15:31:32] [SHOONYA] SHOONYA PnL:     0.00  |  PAPER PnL:     4.68
+[15:31:32] [SHOONYA] SHOONYA: CONNECTED
+[15:31:32] [SHOONYA] PAPER POSITION: NONE
+[15:31:32] [SHOONYA] CRYPTO_PNL: 4.68
+[15:31:32] [SHOONYA] No open positions
+[15:31:34] [SHOONYA] CRYPTO_PNL: 4.68
+[15:31:36] [SHOONYA] CRYPTO_PNL: 4.68
+[15:31:37] [SHOONYA] 
+[15:31:37] [SHOONYA] ====================================================================================================
+[15:31:37] [SHOONYA] MONITOR CYCLE #5714 | TIME: 2026-06-14 15:31:37
+[15:31:37] [SHOONYA] ====================================================================================================
+[15:31:38] [SHOONYA] SHOONYA PnL:     0.00  |  PAPER PnL:     4.68
+[15:31:38] [SHOONYA] SHOONYA: CONNECTED
+[15:31:38] [SHOONYA] PAPER POSITION: NONE
+[15:31:38] [SHOONYA] CRYPTO_PNL: 4.68
+[15:31:39] [SHOONYA] No open positions
+[15:31:40] [SHOONYA] CRYPTO_PNL: 4.68
+[15:31:42] [SHOONYA] CRYPTO_PNL: 4.68
+[15:31:44] [SHOONYA] 
+[15:31:44] [SHOONYA] ====================================================================================================
+[15:31:44] [SHOONYA] MONITOR CYCLE #5715 | TIME: 2026-06-14 15:31:44
+[15:31:44] [SHOONYA] ====================================================================================================
+[15:31:44] [SHOONYA] CRYPTO_PNL: 4.68
+[15:31:44] [SHOONYA] SHOONYA PnL:     0.00  |  PAPER PnL:     4.68
+[15:31:44] [SHOONYA] SHOONYA: CONNECTED
+[15:31:44] [SHOONYA] PAPER POSITION: NONE
+[15:31:45] [SHOONYA] No open positions
+[15:31:46] [SHOONYA] CRYPTO_PNL: 4.68
+[15:31:48] [SHOONYA] CRYPTO_PNL: 4.68
+[15:31:50] [SHOONYA] 
+[15:31:50] [SHOONYA] ====================================================================================================
+[15:31:50] [SHOONYA] MONITOR CYCLE #5716 | TIME: 2026-06-14 15:31:50
+[15:31:50] [SHOONYA] ====================================================================================================
+[15:31:50] [SHOONYA] CRYPTO_PNL: 4.68
+[15:31:50] [SHOONYA] SHOONYA PnL:     0.00  |  PAPER PnL:     4.68
+[15:31:50] [SHOONYA] SHOONYA: CONNECTED
+[15:31:50] [SHOONYA] PAPER POSITION: NONE
+[15:31:51] [SHOONYA] No open positions
+[15:31:52] [SHOONYA] CRYPTO_PNL: 4.68
+[15:31:54] [SHOONYA] CRYPTO_PNL: 4.68
+[15:31:56] [SHOONYA] 
+[15:31:56] [SHOONYA] ====================================================================================================
+[15:31:56] [SHOONYA] MONITOR CYCLE #5717 | TIME: 2026-06-14 15:31:56
+[15:31:56] [SHOONYA] ====================================================================================================
+[15:31:56] [SHOONYA] CRYPTO_PNL: 4.68
+[15:31:56] [SHOONYA] SHOONYA PnL:     0.00  |  PAPER PnL:     4.68
+[15:31:56] [SHOONYA] SHOONYA: CONNECTED
+[15:31:56] [SHOONYA] PAPER POSITION: NONE
+[15:31:57] [SHOONYA] No open positions
+[15:31:58] [SHOONYA] CRYPTO_PNL: 4.68
+[15:32:00] [SHOONYA] CRYPTO_PNL: 4.68
+[15:32:02] [SHOONYA] 
+[15:32:02] [SHOONYA] ====================================================================================================
+[15:32:02] [SHOONYA] MONITOR CYCLE #5718 | TIME: 2026-06-14 15:32:02
+[15:32:02] [SHOONYA] ====================================================================================================
+[15:32:02] [SHOONYA] CRYPTO_PNL: 4.68
+[15:32:02] [SHOONYA] SHOONYA PnL:     0.00  |  PAPER PnL:     4.68
+[15:32:02] [SHOONYA] SHOONYA: CONNECTED
+[15:32:02] [SHOONYA] PAPER POSITION: NONE
+[15:32:03] [SHOONYA] No open positions
+[15:32:04] [SHOONYA] CRYPTO_PNL: 4.68
+[15:32:06] [SHOONYA] CRYPTO_PNL: 4.68
+[15:32:08] [SHOONYA] 
+[15:32:08] [SHOONYA] ====================================================================================================
+[15:32:08] [SHOONYA] MONITOR CYCLE #5719 | TIME: 2026-06-14 15:32:08
+[15:32:08] [SHOONYA] ====================================================================================================
+[15:32:08] [SHOONYA] CRYPTO_PNL: 4.68
+[15:32:09] [SHOONYA] SHOONYA PnL:     0.00  |  PAPER PnL:     4.68
+[15:32:09] [SHOONYA] SHOONYA: CONNECTED
+[15:32:09] [SHOONYA] PAPER POSITION: NONE
+[15:32:09] [SHOONYA] No open positions
+[15:32:10] [SHOONYA] CRYPTO_PNL: 4.68
+[15:32:12] [SHOONYA] CRYPTO_PNL: 4.68
+[15:32:14] [SHOONYA] CRYPTO_PNL: 4.68
+[15:32:14] [SHOONYA] 
+[15:32:14] [SHOONYA] ====================================================================================================
+[15:32:14] [SHOONYA] MONITOR CYCLE #5720 | TIME: 2026-06-14 15:32:14
+[15:32:14] [SHOONYA] ====================================================================================================
+[15:32:15] [SHOONYA] SHOONYA PnL:     0.00  |  PAPER PnL:     4.68
+[15:32:15] [SHOONYA] SHOONYA: CONNECTED
+[15:32:15] [SHOONYA] PAPER POSITION: NONE
+[15:32:15] [SHOONYA] No open positions
+[15:32:16] [SHOONYA] CRYPTO_PNL: 4.68
+[15:32:18] [SHOONYA] CRYPTO_PNL: 4.68
+[15:32:20] [SHOONYA] CRYPTO_PNL: 4.68
+[15:32:20] [SHOONYA] 
+[15:32:20] [SHOONYA] ====================================================================================================
+[15:32:20] [SHOONYA] MONITOR CYCLE #5721 | TIME: 2026-06-14 15:32:20
+[15:32:20] [SHOONYA] ====================================================================================================
+[15:32:21] [SHOONYA] SHOONYA PnL:     0.00  |  PAPER PnL:     4.68
+[15:32:21] [SHOONYA] SHOONYA: CONNECTED
+[15:32:21] [SHOONYA] PAPER POSITION: NONE
+[15:32:21] [SHOONYA] No open positions
+[15:32:22] [SHOONYA] CRYPTO_PNL: 4.68
+[15:32:24] [SHOONYA] CRYPTO_PNL: 4.68
+[15:32:26] [SHOONYA] CRYPTO_PNL: 4.68
+[15:32:26] [SHOONYA] 
+[15:32:26] [SHOONYA] ====================================================================================================
+[15:32:26] [SHOONYA] MONITOR CYCLE #5722 | TIME: 2026-06-14 15:32:26
+[15:32:26] [SHOONYA] ====================================================================================================
+[15:32:27] [SHOONYA] SHOONYA PnL:     0.00  |  PAPER PnL:     4.68
+[15:32:27] [SHOONYA] SHOONYA: CONNECTED
+[15:32:27] [SHOONYA] PAPER POSITION: NONE
+[15:32:28] [SHOONYA] No open positions
+[15:32:28] [SHOONYA] CRYPTO_PNL: 4.68
+[15:32:30] [SHOONYA] CRYPTO_PNL: 4.68
+[15:32:32] [SHOONYA] CRYPTO_PNL: 4.68
+[15:32:33] [SHOONYA] 
+[15:32:33] [SHOONYA] ====================================================================================================
+[15:32:33] [SHOONYA] MONITOR CYCLE #5723 | TIME: 2026-06-14 15:32:33
+[15:32:33] [SHOONYA] ====================================================================================================
+[15:32:33] [SHOONYA] SHOONYA PnL:     0.00  |  PAPER PnL:     4.68
+[15:32:33] [SHOONYA] SHOONYA: CONNECTED
+[15:32:33] [SHOONYA] PAPER POSITION: NONE
+[15:32:33] [NGROK] New URL: https://preheated-viscosity-enclosure.ngrok-free.dev/webhook
+[15:32:33] [NGROK] Auto-copied to clipboard — paste into TradingView!
+[15:32:34] [SHOONYA] No open positions
+[15:32:34] [SHOONYA] CRYPTO_PNL: 4.68
+[15:32:36] [SHOONYA] CRYPTO_PNL: 4.68
+[15:32:38] [SHOONYA] CRYPTO_PNL: 4.68
+[15:32:39] [SHOONYA] 
+[15:32:39] [SHOONYA] ====================================================================================================
+[15:32:39] [SHOONYA] MONITOR CYCLE #5724 | TIME: 2026-06-14 15:32:39
+[15:32:39] [SHOONYA] ====================================================================================================
+[15:32:39] [SHOONYA] SHOONYA PnL:     0.00  |  PAPER PnL:     4.68
+[15:32:39] [SHOONYA] SHOONYA: CONNECTED
+[15:32:39] [SHOONYA] PAPER POSITION: NONE
+[15:32:40] [SHOONYA] No open positions
+[15:32:40] [SHOONYA] CRYPTO_PNL: 4.68
+[15:32:42] [SHOONYA] CRYPTO_PNL: 4.68
+[15:32:44] [SHOONYA] CRYPTO_PNL: 4.68
+[15:32:45] [SHOONYA] 
+[15:32:45] [SHOONYA] ====================================================================================================
+[15:32:45] [SHOONYA] MONITOR CYCLE #5725 | TIME: 2026-06-14 15:32:45
+[15:32:45] [SHOONYA] ====================================================================================================
+[15:32:46] [SHOONYA] SHOONYA PnL:     0.00  |  PAPER PnL:     4.68
+[15:32:46] [SHOONYA] SHOONYA: CONNECTED
+[15:32:46] [SHOONYA] PAPER POSITION: NONE
+[15:32:46] [SHOONYA] CRYPTO_PNL: 4.68
+[15:32:46] [SHOONYA] No open positions
+[15:32:48] [SHOONYA] CRYPTO_PNL: 4.68
+[15:32:50] [SHOONYA] CRYPTO_PNL: 4.68
+[15:32:51] [SHOONYA] 
+[15:32:51] [SHOONYA] ====================================================================================================
+[15:32:51] [SHOONYA] MONITOR CYCLE #5726 | TIME: 2026-06-14 15:32:51
+[15:32:51] [SHOONYA] ====================================================================================================
+[15:32:52] [SHOONYA] SHOONYA PnL:     0.00  |  PAPER PnL:     4.68
+[15:32:52] [SHOONYA] SHOONYA: CONNECTED
+[15:32:52] [SHOONYA] PAPER POSITION: NONE
+[15:32:52] [SHOONYA] CRYPTO_PNL: 4.68
+[15:32:52] [SHOONYA] No open positions
+[15:32:54] [SHOONYA] CRYPTO_PNL: 4.68
+[15:32:56] [SHOONYA] CRYPTO_PNL: 4.68
+[15:32:57] [SHOONYA] 
+[15:32:57] [SHOONYA] ====================================================================================================
+[15:32:57] [SHOONYA] MONITOR CYCLE #5727 | TIME: 2026-06-14 15:32:57
+[15:32:57] [SHOONYA] ====================================================================================================
+[15:32:58] [SHOONYA] SHOONYA PnL:     0.00  |  PAPER PnL:     4.68
+[15:32:58] [SHOONYA] SHOONYA: CONNECTED
+[15:32:58] [SHOONYA] PAPER POSITION: NONE
+[15:32:58] [SHOONYA] CRYPTO_PNL: 4.68
+[15:32:58] [SHOONYA] No open positions
+[15:33:00] [SHOONYA] CRYPTO_PNL: 4.68
+[15:33:02] [SHOONYA] CRYPTO_PNL: 4.68
+[15:33:03] [SHOONYA] 
+[15:33:03] [SHOONYA] ====================================================================================================
+[15:33:03] [SHOONYA] MONITOR CYCLE #5728 | TIME: 2026-06-14 15:33:03
+[15:33:03] [SHOONYA] ====================================================================================================
+[15:33:04] [SHOONYA] SHOONYA PnL:     0.00  |  PAPER PnL:     4.68
+[15:33:04] [SHOONYA] SHOONYA: CONNECTED
+[15:33:04] [SHOONYA] PAPER POSITION: NONE
+[15:33:04] [SHOONYA] CRYPTO_PNL: 4.68
+[15:33:04] [SHOONYA] No open positions
+[15:33:06] [SHOONYA] CRYPTO_PNL: 4.68
+[15:33:08] [SHOONYA] CRYPTO_PNL: 4.68
+[15:33:09] [SHOONYA] 
+[15:33:09] [SHOONYA] ====================================================================================================
+[15:33:09] [SHOONYA] MONITOR CYCLE #5729 | TIME: 2026-06-14 15:33:09
+[15:33:09] [SHOONYA] ====================================================================================================
+[15:33:10] [SHOONYA] SHOONYA PnL:     0.00  |  PAPER PnL:     4.68
+[15:33:10] [SHOONYA] SHOONYA: CONNECTED
+[15:33:10] [SHOONYA] PAPER POSITION: NONE
+[15:33:10] [SHOONYA] CRYPTO_PNL: 4.68
+[15:33:11] [SHOONYA] No open positions
+[15:33:12] [SHOONYA] CRYPTO_PNL: 4.68
+[15:33:14] [SHOONYA] CRYPTO_PNL: 4.68
+[15:33:16] [SHOONYA] 
+[15:33:16] [SHOONYA] ====================================================================================================
+[15:33:16] [SHOONYA] MONITOR CYCLE #5730 | TIME: 2026-06-14 15:33:16
+[15:33:16] [SHOONYA] ====================================================================================================
+[15:33:16] [SHOONYA] CRYPTO_PNL: 4.68
+[15:33:16] [SHOONYA] SHOONYA PnL:     0.00  |  PAPER PnL:     4.68
+[15:33:16] [SHOONYA] SHOONYA: CONNECTED
+[15:33:16] [SHOONYA] PAPER POSITION: NONE
+[15:33:17] [SHOONYA] No open positions
+[15:33:18] [SHOONYA] CRYPTO_PNL: 4.68
+[15:33:20] [SHOONYA] CRYPTO_PNL: 4.68
+[15:33:22] [SHOONYA] 
+[15:33:22] [SHOONYA] ====================================================================================================
+[15:33:22] [SHOONYA] MONITOR CYCLE #5731 | TIME: 2026-06-14 15:33:22
+[15:33:22] [SHOONYA] ====================================================================================================
+[15:33:22] [SHOONYA] CRYPTO_PNL: 4.68
+[15:33:22] [SHOONYA] SHOONYA PnL:     0.00  |  PAPER PnL:     4.68
+[15:33:22] [SHOONYA] SHOONYA: CONNECTED
+[15:33:22] [SHOONYA] PAPER POSITION: NONE
+[15:33:23] [SHOONYA] No open positions
+[15:33:24] [SHOONYA] CRYPTO_PNL: 4.68
+[15:33:26] [SHOONYA] CRYPTO_PNL: 4.68
+[15:33:28] [SHOONYA] 
+[15:33:28] [SHOONYA] ====================================================================================================
+[15:33:28] [SHOONYA] MONITOR CYCLE #5732 | TIME: 2026-06-14 15:33:28
+[15:33:28] [SHOONYA] ====================================================================================================
+[15:33:28] [SHOONYA] CRYPTO_PNL: 4.68
+[15:33:28] [SHOONYA] SHOONYA PnL:     0.00  |  PAPER PnL:     4.68
+[15:33:28] [SHOONYA] SHOONYA: CONNECTED
+[15:33:28] [SHOONYA] PAPER POSITION: NONE
+[15:33:29] [SHOONYA] No open positions
+[15:33:30] [SHOONYA] CRYPTO_PNL: 4.68
+[15:33:32] [SHOONYA] CRYPTO_PNL: 4.68
+[15:33:34] [SHOONYA] 
+[15:33:34] [SHOONYA] ====================================================================================================
+[15:33:34] [SHOONYA] MONITOR CYCLE #5733 | TIME: 2026-06-14 15:33:34
+[15:33:34] [SHOONYA] ====================================================================================================
+[15:33:34] [SHOONYA] CRYPTO_PNL: 4.68
+[15:33:34] [SHOONYA] SHOONYA PnL:     0.00  |  PAPER PnL:     4.68
+[15:33:34] [SHOONYA] SHOONYA: CONNECTED
+[15:33:34] [SHOONYA] PAPER POSITION: NONE
+[15:33:35] [SHOONYA] No open positions
+[15:33:35] [NGROK] New URL: https://preheated-viscosity-enclosure.ngrok-free.dev/webhook
+[15:33:35] [NGROK] Auto-copied to clipboard — paste into TradingView!
+[15:33:36] [SHOONYA] CRYPTO_PNL: 4.68
+[15:33:38] [SHOONYA] CRYPTO_PNL: 4.68
+[15:33:40] [SHOONYA] 
+[15:33:40] [SHOONYA] ====================================================================================================
+[15:33:40] [SHOONYA] MONITOR CYCLE #5734 | TIME: 2026-06-14 15:33:40
+[15:33:40] [SHOONYA] ====================================================================================================
+[15:33:40] [SHOONYA] CRYPTO_PNL: 4.68
+[15:33:41] [SHOONYA] SHOONYA PnL:     0.00  |  PAPER PnL:     4.68
+[15:33:41] [SHOONYA] SHOONYA: CONNECTED
+[15:33:41] [SHOONYA] PAPER POSITION: NONE
+[15:33:41] [SHOONYA] No open positions
+[15:33:42] [SHOONYA] CRYPTO_PNL: 4.68
+[15:33:44] [SHOONYA] CRYPTO_PNL: 4.68
+[15:33:46] [SHOONYA] CRYPTO_PNL: 4.68
+[15:33:46] [SHOONYA] 
+[15:33:46] [SHOONYA] ====================================================================================================
+[15:33:46] [SHOONYA] MONITOR CYCLE #5735 | TIME: 2026-06-14 15:33:46
+[15:33:46] [SHOONYA] ====================================================================================================
+[15:33:47] [SHOONYA] SHOONYA PnL:     0.00  |  PAPER PnL:     4.68
+[15:33:47] [SHOONYA] SHOONYA: CONNECTED
+[15:33:47] [SHOONYA] PAPER POSITION: NONE
+[15:33:47] [SHOONYA] No open positions
+[15:33:48] [SHOONYA] CRYPTO_PNL: 4.68
+[15:33:50] [SHOONYA] CRYPTO_PNL: 4.68
+[15:33:52] [SHOONYA] CRYPTO_PNL: 4.68
+[15:33:52] [SHOONYA] 
+[15:33:52] [SHOONYA] ====================================================================================================
+[15:33:52] [SHOONYA] MONITOR CYCLE #5736 | TIME: 2026-06-14 15:33:52
+[15:33:52] [SHOONYA] ====================================================================================================
+[15:33:53] [SHOONYA] SHOONYA PnL:     0.00  |  PAPER PnL:     4.68
+[15:33:53] [SHOONYA] SHOONYA: CONNECTED
+[15:33:53] [SHOONYA] PAPER POSITION: NONE
+[15:33:53] [SHOONYA] No open positions
+[15:33:54] [SHOONYA] CRYPTO_PNL: 4.68
+[15:33:56] [SHOONYA] CRYPTO_PNL: 4.68
+[15:33:58] [SHOONYA] CRYPTO_PNL: 4.68
+[15:33:58] [SHOONYA] 
+[15:33:58] [SHOONYA] ====================================================================================================
+[15:33:58] [SHOONYA] MONITOR CYCLE #5737 | TIME: 2026-06-14 15:33:58
+[15:33:58] [SHOONYA] ====================================================================================================
+[15:33:59] [SHOONYA] SHOONYA PnL:     0.00  |  PAPER PnL:     4.68
+[15:33:59] [SHOONYA] SHOONYA: CONNECTED
+[15:33:59] [SHOONYA] PAPER POSITION: NONE
+[15:34:00] [SHOONYA] No open positions
+[15:34:00] [SHOONYA] CRYPTO_PNL: 4.68
+[15:34:02] [SHOONYA] CRYPTO_PNL: 4.68
+[15:34:04] [SHOONYA] CRYPTO_PNL: 4.68
+[15:34:05] [SHOONYA] 
+[15:34:05] [SHOONYA] ====================================================================================================
+[15:34:05] [SHOONYA] MONITOR CYCLE #5738 | TIME: 2026-06-14 15:34:05
+[15:34:05] [SHOONYA] ====================================================================================================
+[15:34:05] [SHOONYA] SHOONYA PnL:     0.00  |  PAPER PnL:     4.68
+[15:34:05] [SHOONYA] SHOONYA: CONNECTED
+[15:34:05] [SHOONYA] PAPER POSITION: NONE
+[15:34:06] [SHOONYA] No open positions
+[15:34:06] [SHOONYA] CRYPTO_PNL: 4.68
+[15:34:08] [SHOONYA] CRYPTO_PNL: 4.68
+[15:34:10] [SHOONYA] CRYPTO_PNL: 4.68
+[15:34:11] [SHOONYA] 
+[15:34:11] [SHOONYA] ====================================================================================================
+[15:34:11] [SHOONYA] MONITOR CYCLE #5739 | TIME: 2026-06-14 15:34:11
+[15:34:11] [SHOONYA] ====================================================================================================
+[15:34:11] [SHOONYA] SHOONYA PnL:     0.00  |  PAPER PnL:     4.68
+[15:34:11] [SHOONYA] SHOONYA: CONNECTED
+[15:34:11] [SHOONYA] PAPER POSITION: NONE
+[15:34:12] [SHOONYA] No open positions
+[15:34:12] [SHOONYA] CRYPTO_PNL: 4.68
+[15:34:14] [SHOONYA] CRYPTO_PNL: 4.68
+[15:34:16] [SHOONYA] CRYPTO_PNL: 4.68
+[15:34:17] [SHOONYA] 
+[15:34:17] [SHOONYA] ====================================================================================================
+[15:34:17] [SHOONYA] MONITOR CYCLE #5740 | TIME: 2026-06-14 15:34:17
+[15:34:17] [SHOONYA] ====================================================================================================
+[15:34:17] [SHOONYA] SHOONYA PnL:     0.00  |  PAPER PnL:     4.68
+[15:34:17] [SHOONYA] SHOONYA: CONNECTED
+[15:34:17] [SHOONYA] PAPER POSITION: NONE
+[15:34:18] [SHOONYA] No open positions
+[15:34:18] [SHOONYA] CRYPTO_PNL: 4.68
+[15:34:20] [SHOONYA] CRYPTO_PNL: 4.68
+[15:34:22] [SHOONYA] CRYPTO_PNL: 4.68
+[15:34:23] [SHOONYA] 
+[15:34:23] [SHOONYA] ====================================================================================================
+[15:34:23] [SHOONYA] MONITOR CYCLE #5741 | TIME: 2026-06-14 15:34:23
+[15:34:23] [SHOONYA] ====================================================================================================
+[15:34:24] [SHOONYA] SHOONYA PnL:     0.00  |  PAPER PnL:     4.68
+[15:34:24] [SHOONYA] SHOONYA: CONNECTED
+[15:34:24] [SHOONYA] PAPER POSITION: NONE
+[15:34:24] [SHOONYA] CRYPTO_PNL: 4.68
+[15:34:24] [SHOONYA] No open positions
+[15:34:26] [SHOONYA] CRYPTO_PNL: 4.68
+[15:34:28] [SHOONYA] CRYPTO_PNL: 4.68
+[15:34:29] [SHOONYA] 
+[15:34:29] [SHOONYA] ====================================================================================================
+[15:34:29] [SHOONYA] MONITOR CYCLE #5742 | TIME: 2026-06-14 15:34:29
+[15:34:29] [SHOONYA] ====================================================================================================
+[15:34:30] [SHOONYA] SHOONYA PnL:     0.00  |  PAPER PnL:     4.68
+[15:34:30] [SHOONYA] SHOONYA: CONNECTED
+[15:34:30] [SHOONYA] PAPER POSITION: NONE
+[15:34:30] [SHOONYA] CRYPTO_PNL: 4.68
+[15:34:31] [SHOONYA] No open positions
+[15:34:32] [SHOONYA] CRYPTO_PNL: 4.68
+[15:34:34] [SHOONYA] CRYPTO_PNL: 4.68
+[15:34:36] [SHOONYA] 
+[15:34:36] [SHOONYA] ====================================================================================================
+[15:34:36] [SHOONYA] MONITOR CYCLE #5743 | TIME: 2026-06-14 15:34:36
+[15:34:36] [SHOONYA] ====================================================================================================
+[15:34:36] [SHOONYA] CRYPTO_PNL: 4.68
+[15:34:36] [SHOONYA] SHOONYA PnL:     0.00  |  PAPER PnL:     4.68
+[15:34:36] [SHOONYA] SHOONYA: CONNECTED
+[15:34:36] [SHOONYA] PAPER POSITION: NONE
+[15:34:37] [SHOONYA] No open positions
+[15:34:37] [NGROK] New URL: https://preheated-viscosity-enclosure.ngrok-free.dev/webhook
+[15:34:37] [NGROK] Auto-copied to clipboard — paste into TradingView!
+[15:34:38] [SHOONYA] CRYPTO_PNL: 4.68
+[15:34:40] [SHOONYA] CRYPTO_PNL: 4.68
+[15:34:42] [SHOONYA] 
+[15:34:42] [SHOONYA] ====================================================================================================
+[15:34:42] [SHOONYA] MONITOR CYCLE #5744 | TIME: 2026-06-14 15:34:42
+[15:34:42] [SHOONYA] ====================================================================================================
+[15:34:42] [SHOONYA] CRYPTO_PNL: 4.68
+[15:34:42] [SHOONYA] SHOONYA PnL:     0.00  |  PAPER PnL:     4.68
+[15:34:42] [SHOONYA] SHOONYA: CONNECTED
+[15:34:42] [SHOONYA] PAPER POSITION: NONE
+[15:34:43] [SHOONYA] No open positions
+[15:34:44] [SHOONYA] CRYPTO_PNL: 4.68
+[15:34:46] [SHOONYA] CRYPTO_PNL: 4.68
+[15:34:48] [SHOONYA] 
+[15:34:48] [SHOONYA] ====================================================================================================
+[15:34:48] [SHOONYA] MONITOR CYCLE #5745 | TIME: 2026-06-14 15:34:48
+[15:34:48] [SHOONYA] ====================================================================================================
+[15:34:48] [SHOONYA] CRYPTO_PNL: 4.68
+[15:34:48] [SHOONYA] SHOONYA PnL:     0.00  |  PAPER PnL:     4.68
+[15:34:48] [SHOONYA] SHOONYA: CONNECTED
+[15:34:48] [SHOONYA] PAPER POSITION: NONE
+[15:34:49] [SHOONYA] No open positions
+[15:34:50] [SHOONYA] CRYPTO_PNL: 4.68
+[15:34:52] [SHOONYA] CRYPTO_PNL: 4.68
+[15:34:54] [SHOONYA] 
+[15:34:54] [SHOONYA] ====================================================================================================
+[15:34:54] [SHOONYA] MONITOR CYCLE #5746 | TIME: 2026-06-14 15:34:54
+[15:34:54] [SHOONYA] ====================================================================================================
+[15:34:54] [SHOONYA] CRYPTO_PNL: 4.68
+[15:34:55] [SHOONYA] SHOONYA PnL:     0.00  |  PAPER PnL:     4.68
+[15:34:55] [SHOONYA] SHOONYA: CONNECTED
+[15:34:55] [SHOONYA] PAPER POSITION: NONE
+[15:34:55] [SHOONYA] No open positions
+[15:34:56] [SHOONYA] CRYPTO_PNL: 4.68
+[15:34:58] [SHOONYA] CRYPTO_PNL: 4.68
+[15:35:00] [SHOONYA] 
+[15:35:00] [SHOONYA] ====================================================================================================
+[15:35:00] [SHOONYA] MONITOR CYCLE #5747 | TIME: 2026-06-14 15:35:00
+[15:35:00] [SHOONYA] ====================================================================================================
+[15:35:00] [SHOONYA] CRYPTO_PNL: 4.68
+[15:35:01] [SHOONYA] SHOONYA PnL:     0.00  |  PAPER PnL:     4.68
+[15:35:01] [SHOONYA] SHOONYA: CONNECTED
+[15:35:01] [SHOONYA] PAPER POSITION: NONE
+[15:35:01] [SHOONYA] No open positions
+[15:35:02] [SHOONYA] CRYPTO_PNL: 4.68
+[15:35:04] [SHOONYA] CRYPTO_PNL: 4.68
+[15:35:06] [SHOONYA] CRYPTO_PNL: 4.68
+[15:35:06] [SHOONYA] 
+[15:35:06] [SHOONYA] ====================================================================================================
+[15:35:06] [SHOONYA] MONITOR CYCLE #5748 | TIME: 2026-06-14 15:35:06
+[15:35:06] [SHOONYA] ====================================================================================================
+[15:35:07] [SHOONYA] SHOONYA PnL:     0.00  |  PAPER PnL:     4.68
+[15:35:07] [SHOONYA] SHOONYA: CONNECTED
+[15:35:07] [SHOONYA] PAPER POSITION: NONE
+[15:35:07] [SHOONYA] No open positions
+[15:35:08] [SHOONYA] CRYPTO_PNL: 4.68
+[15:35:10] [SHOONYA] CRYPTO_PNL: 4.68
+[15:35:12] [SHOONYA] CRYPTO_PNL: 4.68
+[15:35:12] [SHOONYA] 
+[15:35:12] [SHOONYA] ====================================================================================================
+[15:35:12] [SHOONYA] MONITOR CYCLE #5749 | TIME: 2026-06-14 15:35:12
+[15:35:12] [SHOONYA] ====================================================================================================
+[15:35:13] [SHOONYA] SHOONYA PnL:     0.00  |  PAPER PnL:     4.68
+[15:35:13] [SHOONYA] SHOONYA: CONNECTED
+[15:35:13] [SHOONYA] PAPER POSITION: NONE
+[15:35:13] [SHOONYA] No open positions
+[15:35:14] [SHOONYA] CRYPTO_PNL: 4.68
+[15:35:16] [SHOONYA] CRYPTO_PNL: 4.68
+[15:35:18] [SHOONYA] CRYPTO_PNL: 4.68
+[15:35:18] [SHOONYA] 
+[15:35:18] [SHOONYA] ====================================================================================================
+[15:35:18] [SHOONYA] MONITOR CYCLE #5750 | TIME: 2026-06-14 15:35:18
+[15:35:18] [SHOONYA] ====================================================================================================
+[15:35:19] [SHOONYA] SHOONYA PnL:     0.00  |  PAPER PnL:     4.68
+[15:35:19] [SHOONYA] SHOONYA: CONNECTED
+[15:35:19] [SHOONYA] PAPER POSITION: NONE
+[15:35:20] [SHOONYA] No open positions
+[15:35:20] [SHOONYA] CRYPTO_PNL: 4.68
+[15:35:22] [SHOONYA] CRYPTO_PNL: 4.68
+[15:35:24] [SHOONYA] CRYPTO_PNL: 4.68
+[15:35:25] [SHOONYA] 
+[15:35:25] [SHOONYA] ====================================================================================================
+[15:35:25] [SHOONYA] MONITOR CYCLE #5751 | TIME: 2026-06-14 15:35:25
+[15:35:25] [SHOONYA] ====================================================================================================
+[15:35:25] [SHOONYA] SHOONYA PnL:     0.00  |  PAPER PnL:     4.68
+[15:35:25] [SHOONYA] SHOONYA: CONNECTED
+[15:35:25] [SHOONYA] PAPER POSITION: NONE
+[15:35:26] [SHOONYA] No open positions
+[15:35:26] [SHOONYA] CRYPTO_PNL: 4.68
+[15:35:28] [SHOONYA] CRYPTO_PNL: 4.68
+[15:35:30] [SHOONYA] CRYPTO_PNL: 4.68
+[15:35:31] [SHOONYA] 
+[15:35:31] [SHOONYA] ====================================================================================================
+[15:35:31] [SHOONYA] MONITOR CYCLE #5752 | TIME: 2026-06-14 15:35:31
+[15:35:31] [SHOONYA] ====================================================================================================
+[15:35:31] [SHOONYA] SHOONYA PnL:     0.00  |  PAPER PnL:     4.68
+[15:35:31] [SHOONYA] SHOONYA: CONNECTED
+[15:35:31] [SHOONYA] PAPER POSITION: NONE
+[15:35:32] [SHOONYA] No open positions
+[15:35:32] [SHOONYA] CRYPTO_PNL: 4.68
+[15:35:34] [SHOONYA] CRYPTO_PNL: 4.68
+[15:35:36] [SHOONYA] CRYPTO_PNL: 4.68
+[15:35:37] [SHOONYA] 
+[15:35:37] [SHOONYA] ====================================================================================================
+[15:35:37] [SHOONYA] MONITOR CYCLE #5753 | TIME: 2026-06-14 15:35:37
+[15:35:37] [SHOONYA] ====================================================================================================
+[15:35:38] [SHOONYA] SHOONYA PnL:     0.00  |  PAPER PnL:     4.68
+[15:35:38] [SHOONYA] SHOONYA: CONNECTED
+[15:35:38] [SHOONYA] PAPER POSITION: NONE
+[15:35:38] [SHOONYA] CRYPTO_PNL: 4.68
+[15:35:38] [SHOONYA] No open positions
+[15:35:39] [NGROK] New URL: https://preheated-viscosity-enclosure.ngrok-free.dev/webhook
+[15:35:39] [NGROK] Auto-copied to clipboard — paste into TradingView!
+[15:35:40] [SHOONYA] CRYPTO_PNL: 4.68
+[15:35:42] [SHOONYA] CRYPTO_PNL: 4.68
+[15:35:43] [SHOONYA] 
+[15:35:43] [SHOONYA] ====================================================================================================
+[15:35:43] [SHOONYA] MONITOR CYCLE #5754 | TIME: 2026-06-14 15:35:43
+[15:35:43] [SHOONYA] ====================================================================================================
+[15:35:44] [SHOONYA] SHOONYA PnL:     0.00  |  PAPER PnL:     4.68
+[15:35:44] [SHOONYA] SHOONYA: CONNECTED
+[15:35:44] [SHOONYA] PAPER POSITION: NONE
+[15:35:44] [SHOONYA] CRYPTO_PNL: 4.68
+[15:35:44] [SHOONYA] No open positions
+[15:35:46] [SHOONYA] CRYPTO_PNL: 4.68
+[15:35:48] [SHOONYA] CRYPTO_PNL: 4.68
+[15:35:49] [SHOONYA] 
+[15:35:49] [SHOONYA] ====================================================================================================
+[15:35:49] [SHOONYA] MONITOR CYCLE #5755 | TIME: 2026-06-14 15:35:49
+[15:35:49] [SHOONYA] ====================================================================================================
+[15:35:50] [SHOONYA] SHOONYA PnL:     0.00  |  PAPER PnL:     4.68
+[15:35:50] [SHOONYA] SHOONYA: CONNECTED
+[15:35:50] [SHOONYA] PAPER POSITION: NONE
+[15:35:50] [SHOONYA] CRYPTO_PNL: 4.68
+[15:35:50] [SHOONYA] No open positions

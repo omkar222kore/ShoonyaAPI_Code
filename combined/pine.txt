@@ -1,0 +1,192 @@
+//@version=5
+strategy(
+     "CCI Surge_tl_SLTP",
+     overlay=true,
+     pyramiding=1,
+     initial_capital=10000,
+     default_qty_type=strategy.percent_of_equity,
+     default_qty_value=75,
+     calc_on_order_fills=true,
+     calc_on_every_tick=true,
+     process_orders_on_close=true,
+     slippage=0,
+     commission_type=strategy.commission.percent,
+     commission_value=0.03)
+
+// =========================
+// USER INPUTS
+// =========================
+
+cciLen         = input.int(5,    "CCI Length",      minval=2, maxval=50)
+cciHigh        = input.int(70,   "CCI Overbought",  minval=50, maxval=200)
+cciLow         = input.int(-70,  "CCI Oversold",    minval=-200, maxval=-50)
+
+hmaLen         = input.int(21,   "HMA Length",      minval=5, maxval=100)
+
+atrLength      = input.int(10,   "ATR Length",      minval=5, maxval=50)
+atrMultiplier  = input.float(1.5, "ATR Multiplier", minval=0.5, maxval=5.0, step=0.1)
+
+trailingStopPct  = input.float(3.0,  "Trail Stop %",  minval=0.5, maxval=10.0, step=0.1)
+trailActivatePct = input.float(0.8,  "Trail Activate %", minval=0.1, maxval=5.0, step=0.1)
+minBarsInTrade   = input.int(1,     "Min Bars Before Trail", minval=0, maxval=10)
+
+// =========================
+// INDICATORS
+// =========================
+
+atrValue = ta.atr(atrLength)
+cci      = ta.cci(close, cciLen)
+hma      = ta.hma(close, hmaLen)
+
+hmaUp = hma > hma[1] and close > hma
+hmaDn = hma < hma[1] and close < hma
+
+// =========================
+// ENTRY GATES
+// =========================
+
+var bool gateLong  = true
+var bool gateShort = true
+
+if cci <= cciHigh
+    gateLong := true
+
+if cci >= cciLow
+    gateShort := true
+
+if strategy.position_size[1] != 0 and strategy.position_size == 0
+    gateLong := false
+    gateShort := false
+
+// =========================
+// POSITION INFO
+// =========================
+
+inPosition = strategy.position_size != 0
+
+barsInPosition =
+     inPosition ?
+     bar_index - strategy.opentrades.entry_bar_index(0) :
+     0
+
+trailReady = barsInPosition >= minBarsInTrade
+
+// =========================
+// ENTRY CONDITIONS
+// =========================
+
+longSignal =
+     barstate.isconfirmed and
+     cci > cciHigh and
+     hmaUp and
+     gateLong and
+     not inPosition
+
+shortSignal =
+     barstate.isconfirmed and
+     cci < cciLow and
+     hmaDn and
+     gateShort and
+     not inPosition
+
+// =========================
+// ATR STOPS
+// =========================
+
+var float atrSL_long  = na
+var float atrSL_short = na
+
+// =========================
+// LONG ENTRY
+// =========================
+
+if longSignal
+
+    strategy.entry("Long", strategy.long)
+
+    atrSL_long  := close - atrValue * atrMultiplier
+    atrSL_short := na
+
+    gateLong := false
+
+    alert(
+         '{"action":"LONG","symbol":"SOLUSD"}',
+         alert.freq_once_per_bar_close)
+
+// =========================
+// SHORT ENTRY
+// =========================
+
+if shortSignal
+
+    strategy.entry("Short", strategy.short)
+
+    atrSL_short := close + atrValue * atrMultiplier
+    atrSL_long  := na
+
+    gateShort := false
+
+    alert(
+         '{"action":"SHORT","symbol":"SOLUSD"}',
+         alert.freq_once_per_bar_close)
+
+// =========================
+// EXIT DETECTION
+// =========================
+
+exitedLong =
+     strategy.position_size[1] > 0 and
+     strategy.position_size <= 0
+
+exitedShort =
+     strategy.position_size[1] < 0 and
+     strategy.position_size >= 0
+
+if exitedLong
+    alert(
+         '{"action":"LONG_EXIT","symbol":"SOLUSD"}',
+         alert.freq_once_per_bar)
+
+if exitedShort
+    alert(
+         '{"action":"SHORT_EXIT","symbol":"SOLUSD"}',
+         alert.freq_once_per_bar)
+
+// =========================
+// EXIT ORDERS
+// =========================
+
+trail_offset =
+     close * trailingStopPct / 100
+
+trail_activation =
+     strategy.position_avg_price *
+     trailActivatePct / 100
+
+if strategy.position_size > 0
+
+    strategy.exit(
+         "Long Exit",
+         from_entry="Long",
+         stop=atrSL_long,
+         trail_price=trailReady ?
+                     strategy.position_avg_price + trail_activation :
+                     na,
+         trail_offset=trailReady ?
+                      trail_offset :
+                      na)
+
+if strategy.position_size < 0
+
+    strategy.exit(
+         "Short Exit",
+         from_entry="Short",
+         stop=atrSL_short,
+         trail_price=trailReady ?
+                     strategy.position_avg_price - trail_activation :
+                     na,
+         trail_offset=trailReady ?
+                      trail_offset :
+                      na)
+
+plot(hma, color=color.purple, linewidth=2)

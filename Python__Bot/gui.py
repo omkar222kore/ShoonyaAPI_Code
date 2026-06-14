@@ -24,6 +24,12 @@ ngrok_path = os.path.join(
     "ngrok.exe"
 )
 
+# NGROK CONFIG PATH (ngrok.yml sits next to gui.py)
+ngrok_config_path = os.path.join(
+    BASE_DIR,
+    "ngrok.yml"
+)
+
 process = None
 ngrok_process = None
 
@@ -136,13 +142,20 @@ def start_ngrok():
 
         output_box.insert(
             tk.END,
-            "\nStarting ngrok...\n"
+            "\nStarting ngrok (3 tunnels: 5000, 5001, 5002)...\n"
         )
 
         output_box.see(tk.END)
 
+        # START ALL 3 TUNNELS USING ngrok.yml
         ngrok_process = subprocess.Popen(
-            [ngrok_path, "http", "5000"],
+            [
+                ngrok_path,
+                "start",
+                "--all",
+                "--config",
+                ngrok_config_path
+            ],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             text=True
@@ -165,7 +178,8 @@ def start_ngrok():
 
             return None
 
-        public_url = None
+        # WAIT FOR TUNNELS TO BE READY
+        tunnels = []
 
         for _ in range(20):
 
@@ -180,10 +194,7 @@ def start_ngrok():
                     []
                 )
 
-                if tunnels:
-
-                    public_url = tunnels[0]["public_url"]
-
+                if len(tunnels) >= 3:
                     break
 
             except:
@@ -191,35 +202,82 @@ def start_ngrok():
 
             time.sleep(1)
 
-        if not public_url:
+        if not tunnels:
 
             output_box.insert(
                 tk.END,
-                "\nNGROK ERROR: Tunnel not created after waiting\n"
+                "\nNGROK ERROR: No tunnels created after waiting\n"
             )
 
             output_box.see(tk.END)
 
             return None
 
-        webhook_url = f"{public_url}/webhook"
+        # SHOW ALL TUNNEL URLs IN OUTPUT
+        output_box.insert(
+            tk.END,
+            "\n--- ACTIVE NGROK TUNNELS ---\n"
+        )
+
+        public_url_5000 = None
+
+        for tunnel in tunnels:
+
+            addr = tunnel.get("config", {}).get("addr", "")
+            url = tunnel["public_url"]
+
+            output_box.insert(
+                tk.END,
+                f"  {addr}  →  {url}\n"
+            )
+
+            # GRAB PORT 5000 URL FOR MAIN BOT WEBHOOK
+            if ":5000" in addr:
+                public_url_5000 = url
 
         output_box.insert(
             tk.END,
-            f"\nWEBHOOK URL:\n{webhook_url}\n\n"
+            "----------------------------\n\n"
         )
 
+        output_box.see(tk.END)
+
+        # FALLBACK: USE FIRST TUNNEL IF 5000 NOT FOUND
+        if not public_url_5000 and tunnels:
+            public_url_5000 = tunnels[0]["public_url"]
+
+        if not public_url_5000:
+
+            output_box.insert(
+                tk.END,
+                "\nNGROK ERROR: Could not find port 5000 tunnel\n"
+            )
+
+            output_box.see(tk.END)
+
+            return None
+
+        webhook_url = f"{public_url_5000}/webhook"
+
+        output_box.insert(
+            tk.END,
+            f"MAIN WEBHOOK (port 5000):\n{webhook_url}\n\n"
+        )
+
+        # SET WEBHOOK ENTRY TO PORT 5000 URL
         webhook_entry.delete(0, tk.END)
 
         webhook_entry.insert(0, webhook_url)
 
+        # AUTO COPY
         root.clipboard_clear()
 
         root.clipboard_append(webhook_url)
 
         output_box.see(tk.END)
 
-        webbrowser.open(public_url)
+        # OPEN NGROK DASHBOARD
+        webbrowser.open("http://127.0.0.1:4040")
 
         return webhook_url
 
@@ -281,7 +339,7 @@ def start_bot():
 
         messagebox.showerror(
             "Ngrok Error",
-            "Failed to start ngrok tunnel"
+            "Failed to start ngrok tunnels"
         )
 
         return
@@ -379,7 +437,7 @@ pnl_var.set("0.00")
 
 root.title("Shoonya Trading Bot")
 
-root.geometry("750x760")
+root.geometry("750x820")
 
 root.resizable(False, False)
 
@@ -515,7 +573,7 @@ clear_button.pack(pady=5)
 # WEBHOOK LABEL
 webhook_label = tk.Label(
     root,
-    text="Webhook URL",
+    text="Webhook URL (Port 5000 - Main Bot)",
     font=("Arial", 11, "bold")
 )
 

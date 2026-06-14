@@ -1,0 +1,12 @@
+version: "2"
+authtoken: 3DS2Oewsl7eUX4H7ch2J9NrhSOt_2FrjKGB3wReWBmoncFhkJ
+tunnels:
+  bot5000:
+    proto: http
+    addr: 5000
+  bot5001:
+    proto: http
+    addr: 5001
+  bot5002:
+    proto: http
+    addr: 5002
