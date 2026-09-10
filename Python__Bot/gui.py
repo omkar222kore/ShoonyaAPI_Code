@@ -24,12 +24,6 @@ ngrok_path = os.path.join(
     "ngrok.exe"
 )
 
-# NGROK CONFIG PATH (ngrok.yml sits next to gui.py)
-ngrok_config_path = os.path.join(
-    BASE_DIR,
-    "ngrok.yml"
-)
-
 process = None
 ngrok_process = None
 
@@ -142,20 +136,13 @@ def start_ngrok():
 
         output_box.insert(
             tk.END,
-            "\nStarting ngrok (3 tunnels: 5000, 5001, 5002)...\n"
+            "\nStarting ngrok...\n"
         )
 
         output_box.see(tk.END)
 
-        # START ALL 3 TUNNELS USING ngrok.yml
         ngrok_process = subprocess.Popen(
-            [
-                ngrok_path,
-                "start",
-                "--all",
-                "--config",
-                ngrok_config_path
-            ],
+            [ngrok_path, "http", "5000"],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             text=True
@@ -178,8 +165,7 @@ def start_ngrok():
 
             return None
 
-        # WAIT FOR TUNNELS TO BE READY
-        tunnels = []
+        public_url = None
 
         for _ in range(20):
 
@@ -194,7 +180,10 @@ def start_ngrok():
                     []
                 )
 
-                if len(tunnels) >= 3:
+                if tunnels:
+
+                    public_url = tunnels[0]["public_url"]
+
                     break
 
             except:
@@ -202,82 +191,35 @@ def start_ngrok():
 
             time.sleep(1)
 
-        if not tunnels:
+        if not public_url:
 
             output_box.insert(
                 tk.END,
-                "\nNGROK ERROR: No tunnels created after waiting\n"
+                "\nNGROK ERROR: Tunnel not created after waiting\n"
             )
 
             output_box.see(tk.END)
 
             return None
 
-        # SHOW ALL TUNNEL URLs IN OUTPUT
-        output_box.insert(
-            tk.END,
-            "\n--- ACTIVE NGROK TUNNELS ---\n"
-        )
-
-        public_url_5000 = None
-
-        for tunnel in tunnels:
-
-            addr = tunnel.get("config", {}).get("addr", "")
-            url = tunnel["public_url"]
-
-            output_box.insert(
-                tk.END,
-                f"  {addr}  →  {url}\n"
-            )
-
-            # GRAB PORT 5000 URL FOR MAIN BOT WEBHOOK
-            if ":5000" in addr:
-                public_url_5000 = url
+        webhook_url = f"{public_url}/webhook"
 
         output_box.insert(
             tk.END,
-            "----------------------------\n\n"
+            f"\nWEBHOOK URL:\n{webhook_url}\n\n"
         )
 
-        output_box.see(tk.END)
-
-        # FALLBACK: USE FIRST TUNNEL IF 5000 NOT FOUND
-        if not public_url_5000 and tunnels:
-            public_url_5000 = tunnels[0]["public_url"]
-
-        if not public_url_5000:
-
-            output_box.insert(
-                tk.END,
-                "\nNGROK ERROR: Could not find port 5000 tunnel\n"
-            )
-
-            output_box.see(tk.END)
-
-            return None
-
-        webhook_url = f"{public_url_5000}/webhook"
-
-        output_box.insert(
-            tk.END,
-            f"MAIN WEBHOOK (port 5000):\n{webhook_url}\n\n"
-        )
-
-        # SET WEBHOOK ENTRY TO PORT 5000 URL
         webhook_entry.delete(0, tk.END)
 
         webhook_entry.insert(0, webhook_url)
 
-        # AUTO COPY
         root.clipboard_clear()
 
         root.clipboard_append(webhook_url)
 
         output_box.see(tk.END)
 
-        # OPEN NGROK DASHBOARD
-        webbrowser.open("http://127.0.0.1:4040")
+        webbrowser.open(public_url)
 
         return webhook_url
 
@@ -339,7 +281,7 @@ def start_bot():
 
         messagebox.showerror(
             "Ngrok Error",
-            "Failed to start ngrok tunnels"
+            "Failed to start ngrok tunnel"
         )
 
         return
@@ -388,20 +330,62 @@ def stop_bot():
 
     try:
 
+        # STOP BOT PROCESS
         if process:
 
-            process.terminate()
+            try:
+
+                subprocess.run(
+                    [
+                        "taskkill",
+                        "/F",
+                        "/T",
+                        "/PID",
+                        str(process.pid)
+                    ],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL
+                )
+
+            except Exception as e:
+
+                output_box.insert(
+                    tk.END,
+                    f"\nBOT KILL ERROR:\n{e}\n"
+                )
 
             process = None
 
+        # STOP NGROK PROCESS
         if ngrok_process:
 
-            ngrok_process.terminate()
+            try:
+
+                subprocess.run(
+                    [
+                        "taskkill",
+                        "/F",
+                        "/T",
+                        "/PID",
+                        str(ngrok_process.pid)
+                    ],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL
+                )
+
+            except Exception as e:
+
+                output_box.insert(
+                    tk.END,
+                    f"\nNGROK KILL ERROR:\n{e}\n"
+                )
 
             ngrok_process = None
 
+        # CLEAR WEBHOOK
         webhook_entry.delete(0, tk.END)
 
+        # RESET STATUS
         status_label.config(
             text="Bot Stopped",
             fg="red"
@@ -411,7 +395,7 @@ def stop_bot():
 
         output_box.insert(
             tk.END,
-            "\nBot Stopped\n"
+            "\nBot Fully Stopped\n"
         )
 
         output_box.see(tk.END)
@@ -424,8 +408,7 @@ def stop_bot():
         )
 
         output_box.see(tk.END)
-
-
+        
 # =========================
 # GUI
 # =========================
@@ -437,7 +420,7 @@ pnl_var.set("0.00")
 
 root.title("Shoonya Trading Bot")
 
-root.geometry("750x820")
+root.geometry("750x760")
 
 root.resizable(False, False)
 
@@ -573,7 +556,7 @@ clear_button.pack(pady=5)
 # WEBHOOK LABEL
 webhook_label = tk.Label(
     root,
-    text="Webhook URL (Port 5000 - Main Bot)",
+    text="Webhook URL",
     font=("Arial", 11, "bold")
 )
 

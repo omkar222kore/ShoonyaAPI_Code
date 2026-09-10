@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SHOONYA ALGO TERMINAL</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/css/style.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.5/socket.io.min.js"></script>
+</head>
+<body>
+
+<div class="scanline"></div>
+
+<div class="container">
+
+  <!-- HEADER -->
+  <header class="header">
+    <div class="header-left">
+      <h1 class="glow-text">SHOONYA <span class="accent">ALGO</span> TERMINAL</h1>
+    </div>
+    <div class="header-right">
+      <div class="clock" id="clock"></div>
+    </div>
+  </header>
+
+  <!-- STATUS BAR -->
+  <div class="status-bar">
+    <div class="status-badge" id="statusBadge">
+      <span class="status-dot"></span>
+      <span id="statusText">OFFLINE</span>
+    </div>
+    <div class="uptime" id="uptime">UP 00:00:00</div>
+  </div>
+
+  <!-- KPI ROW -->
+  <div class="kpi-row">
+    <div class="kpi-card pnl-card" id="pnlCard">
+      <div class="kpi-label">TOTAL P&L</div>
+      <div class="kpi-value" id="pnlValue">0.00</div>
+      <canvas id="pnlSparkline" width="200" height="40"></canvas>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">OPEN POSITIONS</div>
+      <div class="kpi-value" id="posCount">0</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">ORDERS TODAY</div>
+      <div class="kpi-value" id="orderCount">0</div>
+    </div>
+  </div>
+
+  <!-- CONTROLS -->
+  <div class="panel controls-panel">
+    <div class="controls-row">
+      <div class="input-group">
+        <label>SUPER TOKEN</label>
+        <div class="token-input-wrap">
+          <input type="password" id="tokenInput" placeholder="Enter SuperToken" />
+          <button class="btn-icon" id="toggleToken" title="Show/Hide">&#128065;</button>
+        </div>
+      </div>
+      <div class="input-group">
+        <label>CAPITAL / STOCK</label>
+        <input type="number" id="capInput" value="1000" min="100" />
+      </div>
+      <div class="btn-group">
+        <button class="btn btn-start" id="startBtn" onclick="startBot()">START</button>
+        <button class="btn btn-stop" id="stopBtn" onclick="stopBot()">STOP</button>
+        <button class="btn btn-clear" onclick="clearLog()">CLEAR</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- WEBHOOK + NGROK -->
+  <div class="panels-row">
+    <div class="panel webhook-panel">
+      <div class="panel-header">WEBHOOK URL</div>
+      <div class="webhook-url-row">
+        <input type="text" id="webhookUrl" readonly placeholder="Waiting for ngrok..." />
+        <button class="btn btn-copy" onclick="copyWebhook()">COPY</button>
+      </div>
+      <div class="ngrok-chips" id="ngrokChips"></div>
+    </div>
+  </div>
+
+  <!-- POSITIONS TABLE -->
+  <div class="panel">
+    <div class="panel-header">OPEN POSITIONS</div>
+    <div class="positions-wrap">
+      <table class="positions-table" id="posTable">
+        <thead>
+          <tr><th>SYMBOL</th><th>QTY</th><th>P&L</th></tr>
+        </thead>
+        <tbody id="posBody">
+          <tr class="empty-row"><td colspan="3">No open positions</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- LOG CONSOLE -->
+  <div class="panel log-panel">
+    <div class="panel-header">
+      <span>TERMINAL LOG</span>
+      <button class="btn-icon-sm" onclick="clearLog()">CLEAR</button>
+    </div>
+    <div class="log-console" id="logConsole"></div>
+  </div>
+
+</div>
+
+<script src="/static/js/main.js"></script>
+</body>
+</html>

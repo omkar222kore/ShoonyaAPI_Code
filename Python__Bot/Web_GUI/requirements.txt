@@ -1,0 +1,9 @@
+flask
+flask-socketio
+simple-websocket
+NorenRestApiPy
+pandas
+pyyaml
+pyotp
+openpyxl
+requests

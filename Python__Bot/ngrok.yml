@@ -4,9 +4,3 @@ tunnels:
   bot5000:
     proto: http
     addr: 5000
-  bot5001:
-    proto: http
-    addr: 5001
-  bot5002:
-    proto: http
-    addr: 5002

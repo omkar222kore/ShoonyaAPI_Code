@@ -1,4 +1,4 @@
-('D:\\AlgoRepo\\ShoonyaAPI_Code\\Python__Bot\\build\\BuySell_updated\\PYZ-00.pyz',
+('D:\\Python__Bot\\build\\BuySell_updated\\PYZ-00.pyz',
  [('NorenRestApiPy',
    'D:\\Python__Bot\\.venv\\Lib\\site-packages\\NorenRestApiPy\\__init__.py',
    'PYMODULE'),
