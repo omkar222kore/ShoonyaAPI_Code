@@ -63,11 +63,30 @@
       </div>
       <div class="input-group">
         <label>CAPITAL / STOCK</label>
-        <input type="number" id="capInput" value="1000" min="100" />
+        <input type="number" id="capInput" value="200000" min="1000" step="1000" />
+      </div>
+      <div class="input-group">
+        <label>MODE</label>
+        <div class="mode-switch">
+          <span class="ms-label ms-virtual on" id="msVirtual">VIRTUAL</span>
+          <label class="switch" id="modeSwitchWrap" title="Toggle VIRTUAL / LIVE">
+            <input type="checkbox" id="modeToggle" />
+            <span class="slider"></span>
+          </label>
+          <span class="ms-label ms-live" id="msLive">LIVE</span>
+        </div>
+      </div>
+      <div class="input-group">
+        <label>SQUARE-OFF AT</label>
+        <input type="time" id="eodInput" value="15:10" step="60" />
       </div>
       <div class="btn-group">
         <button class="btn btn-start" id="startBtn" onclick="startBot()">START</button>
         <button class="btn btn-stop" id="stopBtn" onclick="stopBot()">STOP</button>
+        <button class="btn btn-squareoff" id="sqOffBtn" onclick="squareOff()"
+                disabled title="Close every open position now">SQUARE OFF</button>
+        <button class="btn btn-copy" id="logBtn" onclick="openTradeLog()"
+                title="Download the Excel trade journal">TRADE LOG</button>
         <button class="btn btn-clear" onclick="clearLog()">CLEAR</button>
       </div>
     </div>
@@ -85,16 +104,27 @@
     </div>
   </div>
 
-  <!-- POSITIONS TABLE -->
+  <!-- POSITIONS TABLE (live + recently closed) -->
   <div class="panel">
-    <div class="panel-header">OPEN POSITIONS</div>
+    <div class="panel-header">
+      <span>POSITIONS</span>
+      <span class="legend">
+        <span class="legend-dot dot-live"></span>LIVE
+        <span class="legend-dot dot-sl"></span>SL HIT
+        <span class="legend-dot dot-tp"></span>TP HIT
+        <span class="legend-dot dot-eod"></span>EOD / MANUAL
+      </span>
+    </div>
     <div class="positions-wrap">
       <table class="positions-table" id="posTable">
         <thead>
-          <tr><th>SYMBOL</th><th>QTY</th><th>P&L</th></tr>
+          <tr>
+            <th>TIME</th><th>SYMBOL</th><th>QTY</th>
+            <th>ENTRY</th><th>EXIT</th><th>P&L</th><th>STATUS</th>
+          </tr>
         </thead>
         <tbody id="posBody">
-          <tr class="empty-row"><td colspan="3">No open positions</td></tr>
+          <tr class="empty-row"><td colspan="7">No positions yet</td></tr>
         </tbody>
       </table>
     </div>

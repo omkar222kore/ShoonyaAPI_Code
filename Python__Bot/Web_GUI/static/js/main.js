@@ -7,6 +7,131 @@ let pnlHistory = [];
 let orderCount = 0;
 const MAX_SPARKLINE = 60;
 
+function parseJson(r) {
+  return r.text().then(t => {
+    try { return JSON.parse(t); }
+    catch (e) { return { error: `Server returned non-JSON response (HTTP ${r.status})` }; }
+  });
+}
+
+// ── Mode switch (virtual / live) ─────────────────────────
+
+let selectedMode = "virtual";
+let botRunning = false;
+
+function setMode(mode, fromServer = false) {
+  if (botRunning && !fromServer) return;
+
+  selectedMode = mode === "live" ? "live" : "virtual";
+  const isLive = selectedMode === "live";
+
+  const toggle = document.getElementById("modeToggle");
+  if (toggle) toggle.checked = isLive;
+  document.getElementById("msVirtual").classList.toggle("on", !isLive);
+  document.getElementById("msLive").classList.toggle("on", isLive);
+
+  if (!fromServer) {
+    addLog(
+      `[SYSTEM] Mode set to ${selectedMode.toUpperCase()}`,
+      isLive ? "warn" : "success"
+    );
+    if (isLive) addLog("[SYSTEM] LIVE = real broker orders, real money", "error");
+  }
+}
+
+function lockMode(locked) {
+  const wrap = document.getElementById("modeSwitchWrap");
+  const toggle = document.getElementById("modeToggle");
+  if (wrap && toggle) {
+    wrap.classList.toggle("locked", locked);
+    toggle.disabled = locked;
+  }
+  const sq = document.getElementById("sqOffBtn");
+  if (sq) sq.disabled = !locked;
+}
+
+const modeToggleEl = document.getElementById("modeToggle");
+if (modeToggleEl) {
+  modeToggleEl.addEventListener("change", () => {
+    setMode(modeToggleEl.checked ? "live" : "virtual");
+  });
+}
+
+// ── Square-off time + manual square-off ───────────────────
+
+const eodInput = document.getElementById("eodInput");
+let eodTime = "15:10";
+let eodDoneLogged = false;
+
+if (eodInput) {
+  eodInput.addEventListener("change", () => {
+    const t = eodInput.value;
+    if (!t) return;
+    fetch("/api/eod", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ time: t }),
+    })
+      .then(parseJson)
+      .then(d => {
+        if (d.error) {
+          addLog(`[ERROR] ${d.error}`, "error");
+          eodInput.value = eodTime;
+          return;
+        }
+        eodTime = d.eod_time || t;
+        addLog(`[SYSTEM] Square-off time set to ${eodTime}`, "success");
+        showToast(`Auto square-off at ${eodTime}`);
+      })
+      .catch(e => addLog(`[ERROR] ${e}`, "error"));
+  });
+}
+
+function squareOff() {
+  if (!botRunning) {
+    addLog("[SYSTEM] Bot is not running", "warn");
+    return;
+  }
+  const live = selectedMode === "live";
+  const msg = live
+    ? "LIVE mode - this places REAL buy orders to close every position. Continue?"
+    : "Close every open position now? (bot keeps running)";
+  if (!confirm(msg)) return;
+
+  fetch("/api/squareoff", { method: "POST" })
+    .then(parseJson)
+    .then(d => {
+      if (d.error) {
+        addLog(`[ERROR] ${d.error}`, "error");
+        return;
+      }
+      addLog("[SYSTEM] Square-off requested - closing all positions", "warn");
+      showToast("Square-off requested");
+    })
+    .catch(e => addLog(`[ERROR] ${e}`, "error"));
+}
+
+function openTradeLog() {
+  fetch("/api/tradelog")
+    .then(r => {
+      if (!r.ok) {
+        return r.json().then(d => { throw new Error(d.error || "No trade log yet"); });
+      }
+      return r.blob();
+    })
+    .then(blob => {
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = "trade_log.xlsx";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(a.href);
+      showToast("Trade log downloaded");
+    })
+    .catch(e => addLog(`[ERROR] ${e.message || e}`, "error"));
+}
+
 // ── Clock ──────────────────────────────────────────────────
 
 function updateClock() {
@@ -21,13 +146,31 @@ updateClock();
 
 function updateUptime() {
   fetch("/api/status")
-    .then(r => r.json())
+    .then(parseJson)
     .then(d => {
       const s = d.uptime || 0;
       const h = String(Math.floor(s / 3600)).padStart(2, "0");
       const m = String(Math.floor((s % 3600) / 60)).padStart(2, "0");
       const sec = String(s % 60).padStart(2, "0");
       document.getElementById("uptime").textContent = `UP ${h}:${m}:${sec}`;
+
+      if (d.mode) setMode(d.mode, true);
+      if (d.eod_time && d.eod_time !== eodTime &&
+          document.activeElement !== eodInput) {
+        eodTime = d.eod_time;
+        if (eodInput) eodInput.value = eodTime;
+      }
+      if (d.eod_done && !eodDoneLogged) {
+        eodDoneLogged = true;
+        addLog(`[EOD] Auto square-off at ${eodTime} complete - positions flattened`, "success");
+      }
+      if (typeof d.running === "boolean" && d.running !== botRunning) {
+        botRunning = d.running;
+        lockMode(botRunning);
+        if (!botRunning && eodDoneLogged) {
+          addLog("[SYSTEM] Bot auto-stopped after square-off", "warn");
+        }
+      }
     })
     .catch(() => {});
 }
@@ -104,25 +247,107 @@ socket.on("pnl", (data) => {
   drawSparkline();
 });
 
-socket.on("positions", (data) => {
-  const positions = data.data || [];
-  const tbody = document.getElementById("posBody");
-  document.getElementById("posCount").textContent = positions.length;
+// ── Positions: live rows + recently closed rows ───────────
 
-  if (positions.length === 0) {
-    tbody.innerHTML = '<tr class="empty-row"><td colspan="3">No open positions</td></tr>';
+let openPos = [];
+let closedTrades = [];
+const MAX_CLOSED = 50;
+let flashOrderId = null;
+
+function esc(s) {
+  return String(s == null ? "" : s)
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+function fmtPnl(v) {
+  const n = Number(v || 0);
+  return n >= 0 ? `+${n.toFixed(2)}` : n.toFixed(2);
+}
+
+function pnlClass(v) {
+  const n = Number(v || 0);
+  return n > 0 ? "pos-positive" : n < 0 ? "pos-negative" : "pos-zero";
+}
+
+function fmtPrice(v) {
+  const n = Number(v);
+  return isFinite(n) && n ? n.toFixed(2) : "&mdash;";
+}
+
+function statusBadge(reason) {
+  const r = String(reason || "").toUpperCase();
+  if (r.indexOf("STOP") === 0) return '<span class="badge badge-sl">SL HIT</span>';
+  if (r.indexOf("TAKE") === 0) return '<span class="badge badge-tp">TP HIT</span>';
+  if (r.indexOf("EOD") === 0) return `<span class="badge badge-eod">${esc(reason)}</span>`;
+  if (r === "MANUAL") return '<span class="badge badge-manual">MANUAL</span>';
+  return `<span class="badge badge-manual">${esc(reason || "CLOSED")}</span>`;
+}
+
+function renderPositions() {
+  const tbody = document.getElementById("posBody");
+  document.getElementById("posCount").textContent = openPos.length;
+
+  const live = openPos.map(p => `<tr class="row-open">
+      <td>${esc(p.time) || "&mdash;"}</td>
+      <td>${esc(p.symbol)}</td>
+      <td>${p.qty}</td>
+      <td>${fmtPrice(p.entry)}</td>
+      <td class="dim">&mdash;</td>
+      <td class="${pnlClass(p.pnl)}">${fmtPnl(p.pnl)}</td>
+      <td><span class="badge badge-live">LIVE</span></td>
+    </tr>`);
+
+  const closed = closedTrades.map(t => {
+    const flashing = flashOrderId && t.order_id === flashOrderId;
+    return `<tr class="row-closed${flashing ? " row-flash" : ""}">
+      <td>${esc(t.time) || "&mdash;"}</td>
+      <td>${esc(t.symbol)}</td>
+      <td>${t.qty}</td>
+      <td>${fmtPrice(t.entry)}</td>
+      <td>${fmtPrice(t.exit)}</td>
+      <td class="${pnlClass(t.pnl)}">${fmtPnl(t.pnl)}</td>
+      <td>${statusBadge(t.reason)}</td>
+    </tr>`;
+  });
+
+  if (!live.length && !closed.length) {
+    tbody.innerHTML = '<tr class="empty-row"><td colspan="7">No positions yet</td></tr>';
     return;
   }
+  tbody.innerHTML = live.concat(closed).join("");
+}
 
-  tbody.innerHTML = positions.map(p => {
-    const pnlClass = p.pnl > 0 ? "pos-positive" : p.pnl < 0 ? "pos-negative" : "pos-zero";
-    const pnlStr = p.pnl >= 0 ? `+${p.pnl.toFixed(2)}` : p.pnl.toFixed(2);
-    return `<tr>
-      <td>${p.symbol}</td>
-      <td>${p.qty}</td>
-      <td class="${pnlClass}">${pnlStr}</td>
-    </tr>`;
-  }).join("");
+function addClosedTrade(row) {
+  if (!row) return;
+  closedTrades.unshift(row);
+  if (closedTrades.length > MAX_CLOSED) closedTrades.length = MAX_CLOSED;
+  flashOrderId = row.order_id || null;
+  renderPositions();
+  setTimeout(() => {
+    flashOrderId = null;
+    renderPositions();
+  }, 3000);
+}
+
+fetch("/api/closedtrades")
+  .then(parseJson)
+  .then(d => {
+    const rows = Array.isArray(d.data) ? d.data : [];
+    const todays = rows.filter(t => !d.date || String(t.date) === d.date);
+    if (todays.length) {
+      closedTrades = todays.slice(0, MAX_CLOSED);
+      renderPositions();
+    }
+  })
+  .catch(() => {});
+
+socket.on("positions", (data) => {
+  openPos = data.data || [];
+  renderPositions();
+});
+
+socket.on("closed_trade", (data) => {
+  addClosedTrade(data && data.data);
 });
 
 socket.on("status", (data) => {
@@ -130,9 +355,11 @@ socket.on("status", (data) => {
   const text = document.getElementById("statusText");
   const state = data.state;
 
-  if (state === "RUNNING" || state === "CONNECTED") {
+  if (state === "RUNNING" || state === "LIVE" || state === "CONNECTED") {
     badge.classList.add("running");
-    text.textContent = state === "RUNNING" ? "RUNNING" : "CONNECTED";
+    if (state === "RUNNING") text.textContent = "VIRTUAL RUNNING";
+    else if (state === "LIVE") text.textContent = "LIVE RUNNING";
+    else text.textContent = "CONNECTED";
   } else {
     badge.classList.remove("running");
     text.textContent = state || "OFFLINE";
@@ -143,7 +370,8 @@ socket.on("order", (data) => {
   orderCount++;
   document.getElementById("orderCount").textContent = orderCount;
   const o = data.data;
-  addLog(`ORDER: ${o.direction} ${o.symbol} x${o.qty} @ ${o.price || "MKT"} -> ${o.order_id}`, "order");
+  const tag = o.virtual ? "V-ORDER" : "ORDER";
+  addLog(`${tag}: ${o.direction} ${o.symbol} x${o.qty} @ ${o.price || "MKT"} -> ${o.order_id}`, "order");
 });
 
 socket.on("ngrok", (data) => {
@@ -179,17 +407,41 @@ function startBot() {
     return;
   }
 
-  addLog("[SYSTEM] Starting bot...", "success");
+  if (selectedMode === "live") {
+    const ok = confirm(
+      "LIVE MODE\n\n" +
+      "Real broker orders will be placed with real money.\n" +
+      "Virtual mode will NOT be used.\n\n" +
+      "Continue?"
+    );
+    if (!ok) {
+      addLog("[SYSTEM] LIVE start cancelled", "warn");
+      return;
+    }
+    addLog("[SYSTEM] WARNING: LIVE mode - real orders enabled", "error");
+  } else {
+    addLog("[SYSTEM] Starting bot in VIRTUAL mode (no real orders)", "success");
+  }
 
   fetch("/api/start", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ super_token: token, trading_cap: parseInt(cap) || 1000 }),
+    body: JSON.stringify({
+      super_token: token,
+      trading_cap: parseInt(cap) || 200000,
+      virtual: selectedMode === "virtual",
+    }),
   })
-    .then(r => r.json())
+    .then(parseJson)
     .then(d => {
-      if (d.error) addLog(`[ERROR] ${d.error}`, "error");
-      else addLog("[SYSTEM] Bot started", "success");
+      if (d.error) {
+        addLog(`[ERROR] ${d.error}`, "error");
+        return;
+      }
+      addLog(`[SYSTEM] Bot started (${(d.mode || selectedMode).toUpperCase()})`, "success");
+      botRunning = true;
+      lockMode(true);
+      eodDoneLogged = false;
     })
     .catch(e => addLog(`[ERROR] ${e}`, "error"));
 }
@@ -197,8 +449,12 @@ function startBot() {
 function stopBot() {
   addLog("[SYSTEM] Stopping bot...", "warn");
   fetch("/api/stop", { method: "POST" })
-    .then(r => r.json())
-    .then(() => addLog("[SYSTEM] Bot stopped", "warn"))
+    .then(parseJson)
+    .then(() => {
+      addLog("[SYSTEM] Bot stopped", "warn");
+      botRunning = false;
+      lockMode(false);
+    })
     .catch(e => addLog(`[ERROR] ${e}`, "error"));
 }
 

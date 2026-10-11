@@ -28,3 +28,6 @@ trading_log.txt
 
 # DS Store
 .DS_Store
+
+# Generated trade journal (created at runtime)
+trade_log.xlsx

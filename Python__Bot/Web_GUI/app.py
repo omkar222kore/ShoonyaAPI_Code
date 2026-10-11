@@ -10,7 +10,7 @@ import subprocess
 import threading
 import requests
 from datetime import datetime
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, send_file
 from flask_socketio import SocketIO
 
 import config as cfg
@@ -41,11 +41,25 @@ def emit_status(status):
 def emit_order(order):
     socketio.emit("order", {"data": order})
 
+def emit_closed_trade(row):
+    socketio.emit("closed_trade", {"data": row})
+
 bot.on_log = emit_log
 bot.on_pnl = emit_pnl
 bot.on_positions = emit_positions
 bot.on_status = emit_status
 bot.on_order = emit_order
+bot.on_closed_trade = emit_closed_trade
+
+
+@app.errorhandler(500)
+def server_error(e):
+    return jsonify({"error": str(getattr(e, "description", None) or e)}), 500
+
+
+@app.errorhandler(404)
+def not_found(e):
+    return jsonify({"error": "Not found"}), 404
 
 
 @app.route("/")
@@ -67,15 +81,21 @@ def api_start():
     body = request.json or {}
     token = body.get("super_token", "").strip()
     cap = body.get("trading_cap", cfg.DEFAULT_TRADING_CAP)
+    virtual = body.get("virtual", cfg.VIRTUAL_MODE_DEFAULT)
     if not token:
         return jsonify({"error": "SuperToken required"}), 400
     try:
         cap = int(cap)
     except ValueError:
         cap = cfg.DEFAULT_TRADING_CAP
-    ok = bot.start(token, cap)
+    ok = bot.start(token, cap, virtual=bool(virtual))
     if ok:
-        return jsonify({"status": "started"})
+        return jsonify({"status": "started", "mode": "virtual" if bot.virtual else "live"})
+    if bot._eod_reached():
+        return jsonify({
+            "error": f"Square-off time {bot.eod_time} has already passed. "
+                     "Change the SQUARE-OFF AT time first."
+        }), 400
     return jsonify({"error": "Login failed"}), 400
 
 
@@ -89,11 +109,74 @@ def api_stop():
 def api_status():
     return jsonify({
         "running": bot.running,
+        "mode": "virtual" if bot.virtual else "live",
+        "realized_pnl": round(bot.realized_pnl, 2) if bot.virtual else 0,
         "pnl": bot.get_total_pnl() if bot.running else 0,
         "uptime": int(time.time() - _start_time),
         "ngrok_urls": ngrok_urls,
         "webhook_url": ngrok_urls.get(5000, ""),
+        "eod_time": bot.eod_time,
+        "eod_done": bot._eod_done,
+        "eod_pending": bot._eod_reached(),
+        "square_off_pending": bot._sq_off_requested,
     })
+
+
+@app.route("/api/closedtrades", methods=["GET"])
+def api_closed_trades():
+    """Today's closes for the positions table.
+
+    The Excel journal keeps full history; the screen only ever shows the
+    current trading day. Falls back to the journal after a server restart.
+    """
+    today = datetime.now().strftime("%Y-%m-%d")
+    rows = [r for r in bot.closed_trades if str(r.get("date", "")) == today]
+
+    if not rows:
+        try:
+            import trade_log
+            rows = [r for r in trade_log.read_trades(500)
+                    if str(r.get("date", "")) == today]
+        except Exception as e:
+            return jsonify({"data": [], "error": str(e)})
+
+    return jsonify({"data": rows[:50], "date": today})
+
+
+@app.route("/api/eod", methods=["POST"])
+def api_eod():
+    body = request.json or {}
+    ok, msg = bot.set_eod_time(body.get("time", ""))
+    if not ok:
+        return jsonify({"error": msg}), 400
+    return jsonify({"status": msg, "eod_time": bot.eod_time})
+
+
+@app.route("/api/squareoff", methods=["POST"])
+def api_squareoff():
+    if not bot.running:
+        return jsonify({"error": "Bot is not running"}), 400
+    ok, msg = bot.request_square_off()
+    if not ok:
+        return jsonify({"error": msg}), 400
+    return jsonify({"status": "requested", "message": msg})
+
+
+@app.route("/api/tradelog", methods=["GET"])
+def api_tradelog():
+    import trade_log
+    st = trade_log.status()
+    if not st["available"]:
+        return jsonify({"error": f"openpyxl unavailable: {st['error']}"}), 500
+    if not st["exists"]:
+        return jsonify({"error": "Trade log is empty - no trades closed yet"}), 404
+    return send_file(st["file"], as_attachment=True, download_name="trade_log.xlsx")
+
+
+@app.route("/api/tradesummary", methods=["GET"])
+def api_tradesummary():
+    import trade_log
+    return jsonify({"file": cfg.TRADE_LOG_FILE, "summary": trade_log.read_summary()})
 
 
 @app.route("/api/positions", methods=["GET"])
@@ -111,8 +194,35 @@ def api_positions():
     return jsonify(result)
 
 
+def _collect_tunnels(timeout=15):
+    """Populate ngrok_urls by querying the local ngrok agent API."""
+    for _ in range(timeout):
+        try:
+            resp = requests.get("http://127.0.0.1:4040/api/tunnels", timeout=2)
+            tunnels = resp.json().get("tunnels", [])
+            if tunnels:
+                for t in tunnels:
+                    addr = t.get("config", {}).get("addr", "")
+                    url = t.get("public_url", "")
+                    if ":5000" in addr:
+                        ngrok_urls[5000] = url
+                    elif ":5001" in addr:
+                        ngrok_urls[5001] = url
+                    elif ":5002" in addr:
+                        ngrok_urls[5002] = url
+                emit_log(f"[NGROK] Tunnels ready: {len(tunnels)}")
+                for port, url in ngrok_urls.items():
+                    emit_log(f"  Port {port} -> {url}")
+                socketio.emit("ngrok", {"urls": ngrok_urls})
+                return True
+        except Exception:
+            pass
+        time.sleep(1)
+    return False
+
+
 def start_ngrok():
-    global ngrok_process, ngrok_urls
+    global ngrok_process
     ngrok_exe = cfg.NGROK_EXE
     ngrok_cfg = cfg.NGROK_CONFIG
     if not os.path.exists(ngrok_exe):
@@ -121,6 +231,12 @@ def start_ngrok():
     if not os.path.exists(ngrok_cfg):
         emit_log("[NGROK] ngrok.yml not found, skipping tunnel")
         return
+
+    # Reuse an agent that is already running so the public URL survives restarts.
+    if _collect_tunnels(timeout=2):
+        emit_log("[NGROK] Reusing running ngrok agent")
+        return
+
     emit_log("[NGROK] Starting ngrok tunnels...")
     try:
         ngrok_process = subprocess.Popen(
@@ -131,32 +247,13 @@ def start_ngrok():
         )
         time.sleep(4)
         if ngrok_process.poll() is not None:
-            emit_log("[NGROK] Failed to start")
+            emit_log("[NGROK] Spawn exited - checking for an existing agent")
+            if not _collect_tunnels(timeout=5):
+                emit_log("[NGROK] Failed to start")
             return
-        for _ in range(15):
-            try:
-                resp = requests.get("http://127.0.0.1:4040/api/tunnels", timeout=2)
-                tunnels = resp.json().get("tunnels", [])
-                if tunnels:
-                    for t in tunnels:
-                        addr = t.get("config", {}).get("addr", "")
-                        url = t.get("public_url", "")
-                        if ":5000" in addr:
-                            ngrok_urls[5000] = url
-                        elif ":5001" in addr:
-                            ngrok_urls[5001] = url
-                        elif ":5002" in addr:
-                            ngrok_urls[5002] = url
-                    emit_log(f"[NGROK] Tunnels ready: {len(tunnels)}")
-                    for port, url in ngrok_urls.items():
-                        emit_log(f"  Port {port} -> {url}")
-                    socketio.emit("ngrok", {"urls": ngrok_urls})
-                    break
-            except Exception:
-                pass
-            time.sleep(1)
-        if not ngrok_urls:
+        if not _collect_tunnels(timeout=15):
             emit_log("[NGROK] No tunnels found after waiting")
+
     except Exception as e:
         emit_log(f"[NGROK] Error: {e}")
 

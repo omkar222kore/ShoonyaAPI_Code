@@ -2,6 +2,7 @@ flask
 flask-socketio
 simple-websocket
 NorenRestApiPy
+websocket-client
 pandas
 pyyaml
 pyotp
