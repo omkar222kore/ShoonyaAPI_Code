@@ -7,3 +7,5 @@ pyyaml
 requests
 NorenRestApiPy
 python-dateutil
+websocket-client
+python-calamine

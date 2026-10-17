@@ -394,15 +394,9 @@ class TradingBot:
         )
         return closed
 
-    def is_time_in_valid_window(self, time_str):
-        from config import VALID_TIME_WINDOWS
-        check_time = datetime.strptime(time_str, "%H:%M").time()
-        for start_str, end_str in VALID_TIME_WINDOWS:
-            start_time = datetime.strptime(start_str, "%H:%M").time()
-            end_time = datetime.strptime(end_str, "%H:%M").time()
-            if start_time <= check_time <= end_time:
-                return True
-        return False
+    def is_valid_trigger_time(self, time_str):
+        from config import VALID_TRIGGER_TIMES
+        return str(time_str).strip() in VALID_TRIGGER_TIMES
 
     def parse_webhook_payload(self, data):
         if not data:
@@ -447,8 +441,8 @@ class TradingBot:
             return []
         for stock in stocks:
             time_value = stock.get("time", "").strip()
-            if not self.is_time_in_valid_window(time_value):
-                self._log(f"Time {time_value} not in valid window")
+            if not self.is_valid_trigger_time(time_value):
+                self._log(f"Time {time_value} not a valid trigger time")
                 return []
         return stocks
 

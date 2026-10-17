@@ -3,6 +3,7 @@ Backtest Engine - extracted from BackTest_Final.ipynb
 Filter CSV → Download data → Run backtest → Excel results
 """
 import os
+import re
 import time
 import pandas as pd
 from datetime import datetime
@@ -40,6 +41,7 @@ class BacktestEngine:
         return False
 
     def filter_csv(self, csv_path):
+        import config as cfg
         self._log(f"Filtering CSV: {csv_path}")
         df = pd.read_csv(csv_path)
         date_col = df.columns[0]
@@ -49,7 +51,7 @@ class BacktestEngine:
         )
         df = df.dropna(subset=[date_col])
         df["time_only"] = df[date_col].dt.strftime("%H:%M")
-        valid_times = ["09:45", "10:00", "10:30", "10:45"]
+        valid_times = cfg.VALID_TRIGGER_TIMES
         filtered = df[df["time_only"].isin(valid_times)].copy()
         filtered["ts"] = filtered[date_col].dt.strftime("%Y-%m-%d %H:%M:%S")
         counts = filtered["ts"].value_counts()
@@ -113,14 +115,19 @@ class BacktestEngine:
         self._log(f"Download done: {len(ok)} ok, {len(fail)} failed")
         return ok, fail
 
-    def run_backtest(self, stocks_info, sl_pct=0.6, tp_pct=1.3, capital=200000):
+    def run_backtest(self, stocks_info, sl_pct=0.6, tp_pct=1.3, capital=200000, eod_time="15:10"):
         import config as cfg
         data_dir = cfg.STOCKS_DATA_DIR
         results = []
         sl_mult = 1 + sl_pct / 100
         tp_mult = 1 - tp_pct / 100
 
-        self._log(f"Running backtest: SL={sl_pct}% TP={tp_pct}% Cap={capital}")
+        if not re.match(r"^\d{1,2}:\d{2}$", str(eod_time).strip()):
+            self._log(f"Invalid EOD time '{eod_time}' - falling back to {cfg.EOD_EXIT_TIME}")
+            eod_time = cfg.EOD_EXIT_TIME
+        eod_time = str(eod_time).strip()
+
+        self._log(f"Running backtest: SL={sl_pct}% TP={tp_pct}% Cap={capital} EOD={eod_time}")
 
         for idx, (entry_time_str, stock_name) in enumerate(stocks_info, 1):
             xlsx = os.path.join(data_dir, f"{stock_name}-EQ.xlsx")
@@ -142,37 +149,51 @@ class BacktestEngine:
                 qty = int(capital / ep)
                 sl_price = ep * sl_mult
                 tp_price = ep * tp_mult
-                self._log(f"[{idx}/{len(stocks_info)}] {stock_name} | ENTRY: {entry_actual} @ {ep:.2f} | Qty: {qty} | SL: {sl_price:.2f} | TP: {tp_price:.2f}")
 
-                sub = sd[sd["time"] > entry_actual]
+                eod_cut = pd.to_datetime(entry_time_str[:10] + " " + eod_time + ":00")
+                self._log(f"[{idx}/{len(stocks_info)}] {stock_name} | ENTRY: {entry_actual} @ {ep:.2f} | Qty: {qty} | SL: {sl_price:.2f} | TP: {tp_price:.2f} | EOD: {eod_cut}")
+
+                # Only look for SL/TP on the entry day, up to the EOD cut.
+                intraday = sd[(sd["time"] > entry_actual) & (sd["time"] <= eod_cut)]
                 hit = False
-                for _, row in sub.iterrows():
+                for _, row in intraday.iterrows():
                     cp, ct = row["intc"], row["time"]
                     if cp < tp_price:
                         pnl = (ep - cp) * qty
-                        results.append([stock_name, entry_time, ct, cp, "Profit", pnl])
+                        results.append([stock_name, entry_actual, ct, cp, "Profit", pnl])
                         self._log(f"  EXIT: {ct} @ {cp:.2f} | TP HIT | PnL: +{pnl:.2f}")
                         hit = True
                         break
                     elif cp > sl_price:
                         pnl = (ep - cp) * qty
-                        results.append([stock_name, entry_time, ct, cp, "Loss", pnl])
+                        results.append([stock_name, entry_actual, ct, cp, "Loss", pnl])
                         self._log(f"  EXIT: {ct} @ {cp:.2f} | SL HIT | PnL: {pnl:.2f}")
                         hit = True
                         break
 
-                if not hit:
-                    cutoff = pd.to_datetime(entry_time_str[:10] + " 15:15:00")
-                    cut_rows = sd[sd["time"] >= cutoff]
-                    if not cut_rows.empty:
-                        cp = cut_rows.iloc[0]["intc"]
-                        pnl = (ep - cp) * qty
-                        s = "Profit" if cp < ep else "Loss"
-                        results.append([stock_name, entry_time, cutoff, cp, f"Cut 15:15 ({s})", pnl])
-                        sign = "+" if pnl >= 0 else ""
-                        self._log(f"  EXIT: {cutoff} @ {cp:.2f} | CUT 15:15 | PnL: {sign}{pnl:.2f}")
-                    else:
-                        self._log(f"  NO CUT DATA at 15:15 for {stock_name}")
+                if hit:
+                    continue
+
+                # No SL/TP hit - square off intraday (entry day only).
+                day_start = eod_cut.normalize()
+                day_end = day_start + pd.Timedelta(days=1)
+                after = sd[(sd["time"] >= eod_cut) & (sd["time"] < day_end)]
+                if not after.empty:
+                    cp, ct = after.iloc[0]["intc"], after.iloc[0]["time"]
+                    label = f"Cut EOD {eod_time}"
+                else:
+                    day_rows = sd[(sd["time"] >= entry_actual) & (sd["time"] <= eod_cut)]
+                    if day_rows.empty:
+                        self._log(f"  NO DATA at/after EOD {eod_time} for {stock_name}")
+                        continue
+                    cp, ct = day_rows.iloc[-1]["intc"], day_rows.iloc[-1]["time"]
+                    label = "Cut EOD last"
+
+                pnl = (ep - cp) * qty
+                s = "Profit" if cp < ep else "Loss"
+                results.append([stock_name, entry_actual, ct, cp, f"{label} ({s})", pnl])
+                sign = "+" if pnl >= 0 else ""
+                self._log(f"  EXIT: {ct} @ {cp:.2f} | {label.upper()} | PnL: {sign}{pnl:.2f}")
 
             except Exception as e:
                 self._log(f"[{idx}] {stock_name}: ERROR {str(e)[:60]}")

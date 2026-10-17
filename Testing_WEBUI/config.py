@@ -13,7 +13,13 @@ RESULTS_DIR = os.path.join(BASE_DIR, "results")
 
 PORT = 5000
 
-DEFAULT_CSV = os.path.join(r"C:\Users\omkar\Downloads", "Backtest bb_blast_sell_Combined.csv")
+DEFAULT_CSV = os.path.join(r"C:\Users\vishw\Downloads", "Backtest bb_blast_sell_Combined.csv")
 DEFAULT_SL_PCT = 0.6
 DEFAULT_TP_PCT = 1.3
 DEFAULT_CAPITAL = 200000
+EOD_EXIT_TIME = "15:10"
+
+VALID_TRIGGER_TIMES = [
+    "09:45", "10:00", "10:15", "10:30", "10:45",
+    "11:00", "11:15", "11:30", "13:00", "13:15",
+]

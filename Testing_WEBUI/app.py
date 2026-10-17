@@ -3,6 +3,7 @@ Testing_WEBUI - Flask App
 Backtest machine: login → filter CSV → download data → run backtest → Excel
 """
 import os
+import re
 import json
 import time
 import queue
@@ -61,6 +62,9 @@ def api_backtest():
     tp_pct = float(body.get("tp_pct", cfg.DEFAULT_TP_PCT))
     capital = int(body.get("capital", cfg.DEFAULT_CAPITAL))
     skip_download = body.get("skip_download", False)
+    eod_time = str(body.get("eod_time", cfg.EOD_EXIT_TIME)).strip()
+    if not re.match(r"^\d{1,2}:\d{2}$", eod_time):
+        return jsonify({"error": f"Invalid EOD time '{eod_time}' - use HH:MM"}), 400
 
     def run():
         global backtest_running, last_results, last_summary
@@ -78,7 +82,7 @@ def api_backtest():
             if not skip_download:
                 engine.download_data(stocks_info)
 
-            results = engine.run_backtest(stocks_info, sl_pct, tp_pct, capital)
+            results = engine.run_backtest(stocks_info, sl_pct, tp_pct, capital, eod_time)
 
             os.makedirs(cfg.RESULTS_DIR, exist_ok=True)
             ts = datetime.now().strftime("%Y%m%d_%H%M%S")
