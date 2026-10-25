@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LOCKED - SHOONYA ALGO TERMINAL</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+<div class="scanline"></div>
+<div class="gate-wrap">
+  <div class="gate-card">
+    <div class="gate-lock">&#128274;</div>
+    <h1 class="glow-text">SHOONYA <span class="accent">ALGO</span></h1>
+    <p class="gate-sub">TERMINAL LOCKED</p>
+    <div class="login-field">
+      <label>ACCESS PASSWORD</label>
+      <input type="password" id="gatePwd" placeholder="Enter password" autocomplete="off" autofocus />
+    </div>
+    <button class="btn btn-start login-btn" id="gateBtn" onclick="doUnlock()">UNLOCK</button>
+    <div class="gate-err" id="gateErr"></div>
+  </div>
+</div>
+<script>
+function doUnlock() {
+  const pwd = document.getElementById("gatePwd").value;
+  const err = document.getElementById("gateErr");
+  err.textContent = "";
+  fetch("/api/unlock", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ password: pwd }),
+  })
+    .then(r => r.json().then(d => ({ ok: r.ok, d })))
+    .then(({ ok, d }) => {
+      if (ok) { window.location.href = "/"; }
+      else { err.textContent = d.error || "Wrong password"; }
+    })
+    .catch(e => { err.textContent = String(e); });
+}
+document.getElementById("gatePwd").addEventListener("keydown", e => {
+  if (e.key === "Enter") doUnlock();
+});
+</script>
+</body>
+</html>

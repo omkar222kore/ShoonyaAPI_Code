@@ -18,6 +18,10 @@ function parseJson(r) {
 
 let selectedMode = "virtual";
 let botRunning = false;
+let lastPnl = null;
+let dayPnl = null;
+let eodDone = false;
+let eodPending = false;
 
 function setMode(mode, fromServer = false) {
   if (botRunning && !fromServer) return;
@@ -37,6 +41,9 @@ function setMode(mode, fromServer = false) {
     );
     if (isLive) addLog("[SYSTEM] LIVE = real broker orders, real money", "error");
   }
+
+  updateModePill();
+  renderPnl();
 }
 
 function lockMode(locked) {
@@ -48,6 +55,51 @@ function lockMode(locked) {
   }
   const sq = document.getElementById("sqOffBtn");
   if (sq) sq.disabled = !locked;
+}
+
+// ── Mode pill + P&L idle/closed states ────────────────────
+
+function updateModePill() {
+  const pill = document.getElementById("modePill");
+  if (!pill) return;
+  const live = selectedMode === "live";
+  pill.className = "mode-pill " + (live ? "live" : "virtual");
+  pill.textContent = live ? "LIVE - REAL MONEY" : "VIRTUAL";
+}
+
+function renderPnl() {
+  const el = document.getElementById("pnlValue");
+  const card = document.getElementById("pnlCard");
+  const chip = document.getElementById("pnlChip");
+  if (!el || !card) return;
+
+  const live = selectedMode === "live";
+  card.classList.remove("pnl-positive", "pnl-negative", "pnl-idle", "pnl-closed");
+  card.classList.toggle("live-accent", live);
+
+  const fmt = (v) => (Number(v) > 0 ? "+" : "") + Number(v).toFixed(2);
+
+  if (botRunning) {
+    const pnl = lastPnl == null ? 0 : lastPnl;
+    el.textContent = fmt(pnl);
+    card.classList.add(pnl >= 0 ? "pnl-positive" : "pnl-negative");
+    if (chip) chip.textContent = live ? "LIVE SESSION" : "VIRTUAL SESSION";
+    return;
+  }
+
+  // Not running: show the day's profit (still meaningful once closed).
+  const closed = eodDone || eodPending;
+  const val = dayPnl != null ? dayPnl : lastPnl;
+  if (val != null && (closed || Number(val) !== 0)) {
+    el.textContent = fmt(val);
+    card.classList.add(Number(val) >= 0 ? "pnl-positive" : "pnl-negative");
+    card.classList.add(closed ? "pnl-closed" : "pnl-idle");
+    if (chip) chip.textContent = closed ? "MARKET CLOSED" : "NOT RUNNING";
+  } else {
+    card.classList.add(closed ? "pnl-closed" : "pnl-idle");
+    el.textContent = "\u2014";
+    if (chip) chip.textContent = closed ? "MARKET CLOSED" : "NOT RUNNING";
+  }
 }
 
 const modeToggleEl = document.getElementById("modeToggle");
@@ -154,12 +206,15 @@ function updateUptime() {
       const sec = String(s % 60).padStart(2, "0");
       document.getElementById("uptime").textContent = `UP ${h}:${m}:${sec}`;
 
-      if (d.mode) setMode(d.mode, true);
+      if (d.mode && d.running) setMode(d.mode, true);
       if (d.eod_time && d.eod_time !== eodTime &&
           document.activeElement !== eodInput) {
         eodTime = d.eod_time;
         if (eodInput) eodInput.value = eodTime;
       }
+      eodDone = !!d.eod_done;
+      eodPending = !!d.eod_pending;
+      if (typeof d.pnl === "number") dayPnl = d.pnl;
       if (d.eod_done && !eodDoneLogged) {
         eodDoneLogged = true;
         addLog(`[EOD] Auto square-off at ${eodTime} complete - positions flattened`, "success");
@@ -171,10 +226,14 @@ function updateUptime() {
           addLog("[SYSTEM] Bot auto-stopped after square-off", "warn");
         }
       }
+      if (typeof d.logged_in === "boolean") setLoginStatus(d.logged_in, d.user);
+
+      updateModePill();
+      renderPnl();
     })
     .catch(() => {});
 }
-setInterval(updateUptime, 5000);
+setInterval(updateUptime, 500);
 updateUptime();
 
 // ── PnL Sparkline ──────────────────────────────────────────
@@ -235,14 +294,10 @@ socket.on("log", (data) => {
 });
 
 socket.on("pnl", (data) => {
-  const pnl = data.value;
-  const el = document.getElementById("pnlValue");
-  el.textContent = pnl >= 0 ? `+${pnl.toFixed(2)}` : pnl.toFixed(2);
+  lastPnl = data.value;
+  renderPnl();
 
-  const card = document.getElementById("pnlCard");
-  card.className = "kpi-card pnl-card " + (pnl >= 0 ? "pnl-positive" : "pnl-negative");
-
-  pnlHistory.push(pnl);
+  pnlHistory.push(lastPnl);
   if (pnlHistory.length > MAX_SPARKLINE) pnlHistory.shift();
   drawSparkline();
 });
@@ -470,6 +525,133 @@ function clearLog() {
   document.getElementById("logConsole").innerHTML = "";
 }
 
+// ── Login panel ────────────────────────────────────────────
+
+function toggleLoginPanel() {
+  const panel = document.getElementById("loginPanel");
+  if (panel) panel.classList.toggle("open");
+}
+
+function togglePwd() {
+  const input = document.getElementById("pwdInput");
+  const btn = document.getElementById("togglePwd");
+  if (!input) return;
+  if (input.type === "password") {
+    input.type = "text";
+    btn.innerHTML = "&#128064;";
+  } else {
+    input.type = "password";
+    btn.innerHTML = "&#128065;";
+  }
+}
+
+function setLoginStatus(ok, user) {
+  const el = document.getElementById("loginStatus");
+  if (!el) return;
+  el.classList.toggle("ok", !!ok);
+  el.classList.toggle("off", !ok);
+  el.textContent = ok ? `LOGGED IN${user ? " - " + user : ""}` : "NOT LOGGED IN";
+}
+
+function loginValues() {
+  return {
+    user_id: (document.getElementById("uidInput") || {}).value || "",
+    password: (document.getElementById("pwdInput") || {}).value || "",
+    otp: (document.getElementById("otpInput") || {}).value || "",
+    jkey: (document.getElementById("jkeyInput") || {}).value || "",
+  };
+}
+
+function fetchJkeyFromWeb() {
+  const body = loginValues();
+  body.user_id = body.user_id.trim();
+  body.otp = body.otp.trim();
+  const btn = document.getElementById("fetchJkeyBtn");
+  const reset = () => {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = "FETCH JKEY FROM WEB";
+    }
+  };
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = "LOGGING IN... (up to 1 min)";
+  }
+  addLog("[SYSTEM] Logging into Shoonya web terminal...", "warn");
+  fetch("/api/getjkey", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  })
+    .then(parseJson)
+    .then(d => {
+      if (d.error) {
+        addLog(`[ERROR] ${d.error}`, "error");
+        showToast("Login failed");
+        return;
+      }
+      const jk = document.getElementById("jkeyInput");
+      if (jk) jk.value = d.jkey || d.supertoken || "";
+      addLog("[SUCCESS] JKEY fetched from web login", "success");
+      showToast("JKEY fetched");
+    })
+    .catch(e => addLog(`[ERROR] ${e}`, "error"))
+    .finally(reset);
+}
+
+function copyJkey() {
+  const j = document.getElementById("jkeyInput");
+  if (!j || !j.value.trim()) {
+    addLog("[ERROR] No jkey to copy", "error");
+    return;
+  }
+  navigator.clipboard.writeText(j.value.trim()).then(() => {
+    addLog("[SYSTEM] JKEY copied to clipboard", "success");
+    showToast("JKEY copied");
+  });
+}
+
+function useJkey() {
+  const jkey = (document.getElementById("jkeyInput") || {}).value || "";
+  if (!jkey.trim()) {
+    addLog("[ERROR] Paste a JKEY first", "error");
+    return;
+  }
+  const tokenInput = document.getElementById("tokenInput");
+  if (tokenInput) tokenInput.value = jkey.trim();
+  addLog("[SYSTEM] JKEY copied into SuperToken field", "success");
+  showToast("JKEY copied");
+}
+
+function saveLogin() {
+  const body = loginValues();
+  body.user_id = body.user_id.trim();
+  body.otp = body.otp.trim();
+  body.jkey = body.jkey.trim();
+  fetch("/api/login/save", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  })
+    .then(parseJson)
+    .then(d => {
+      if (d.error) {
+        addLog(`[ERROR] ${d.error}`, "error");
+        return;
+      }
+      addLog(`[SYSTEM] ${d.message || "Credentials saved"}`, "success");
+      showToast("Saved");
+    })
+    .catch(e => addLog(`[ERROR] ${e}`, "error"));
+}
+
+socket.on("auth", (data) => {
+  setLoginStatus(!!(data && data.logged_in), data && data.user);
+});
+
+const togglePwdBtn = document.getElementById("togglePwd");
+if (togglePwdBtn) togglePwdBtn.addEventListener("click", togglePwd);
+
 // ── Token show/hide ────────────────────────────────────────
 
 document.getElementById("toggleToken").addEventListener("click", () => {
@@ -517,6 +699,11 @@ function showToast(msg) {
   document.body.appendChild(t);
   setTimeout(() => t.remove(), 2500);
 }
+
+// ── Initial render ─────────────────────────────────────────
+
+updateModePill();
+renderPnl();
 
 // ── Keyboard shortcuts ─────────────────────────────────────
 

@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SHOONYA ALGO TERMINAL</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/css/style.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.5/socket.io.min.js"></script>
+</head>
+<body>
+
+<div class="scanline"></div>
+
+<div class="container">
+
+  <!-- HEADER -->
+  <header class="header">
+    <div class="header-left">
+      <h1 class="glow-text">SHOONYA <span class="accent">ALGO</span> TERMINAL</h1>
+    </div>
+    <div class="header-right">
+      <div class="login-wrap">
+        <button class="login-trigger" id="loginTrigger" onclick="toggleLoginPanel()">&#128274; LOGIN</button>
+        <div class="login-panel" id="loginPanel">
+          <div class="login-field">
+            <label>USER ID</label>
+            <input type="text" id="uidInput" value="FA74468" autocomplete="off" />
+          </div>
+          <div class="login-field">
+            <label>PASSWORD</label>
+            <div class="token-input-wrap">
+              <input type="password" id="pwdInput" value="GURU123kore#" autocomplete="off" />
+              <button class="btn-icon" id="togglePwd" title="Show/Hide">&#128065;</button>
+            </div>
+          </div>
+          <div class="login-field">
+            <label>OTP (leave blank to auto-generate)</label>
+            <input type="text" id="otpInput" placeholder="6-digit OTP" maxlength="6" inputmode="numeric" autocomplete="off" />
+          </div>
+          <div class="login-actions">
+            <button class="btn btn-copy login-btn" id="fetchJkeyBtn" onclick="fetchJkeyFromWeb()">FETCH JKEY FROM WEB</button>
+          </div>
+          <div class="login-field">
+            <label>JKEY / SUPERTOKEN (auto-filled, or paste manually)</label>
+            <textarea id="jkeyInput" rows="2" placeholder="Auto-filled after fetch, or paste jkey here" autocomplete="off"></textarea>
+            <button class="btn btn-copy login-btn" onclick="copyJkey()">COPY JKEY</button>
+          </div>
+          <div class="login-actions">
+            <button class="btn btn-copy login-btn" onclick="useJkey()">USE JKEY IN START</button>
+            <button class="btn btn-copy login-btn" onclick="saveLogin()">SAVE</button>
+          </div>
+        </div>
+      </div>
+      <div class="clock" id="clock"></div>
+    </div>
+  </header>
+
+  <!-- STATUS BAR -->
+  <div class="status-bar">
+    <div class="status-badge" id="statusBadge">
+      <span class="status-dot"></span>
+      <span id="statusText">OFFLINE</span>
+    </div>
+    <div class="mode-pill virtual" id="modePill">VIRTUAL</div>
+    <div class="uptime" id="uptime">UP 00:00:00</div>
+  </div>
+
+  <!-- KPI ROW -->
+  <div class="kpi-row">
+    <div class="kpi-card pnl-card pnl-idle" id="pnlCard">
+      <div class="kpi-label">TOTAL P&L</div>
+      <div class="kpi-value" id="pnlValue">&mdash;</div>
+      <div class="pnl-chip" id="pnlChip">NOT RUNNING</div>
+      <canvas id="pnlSparkline" width="200" height="40"></canvas>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">OPEN POSITIONS</div>
+      <div class="kpi-value" id="posCount">0</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">ORDERS TODAY</div>
+      <div class="kpi-value" id="orderCount">0</div>
+    </div>
+  </div>
+
+  <!-- CONTROLS -->
+  <div class="panel controls-panel">
+    <div class="controls-row">
+      <div class="input-group">
+        <label>SUPER TOKEN</label>
+        <div class="token-input-wrap">
+          <input type="password" id="tokenInput" placeholder="Enter SuperToken" />
+          <button class="btn-icon" id="toggleToken" title="Show/Hide">&#128065;</button>
+        </div>
+      </div>
+      <div class="input-group">
+        <label>CAPITAL / STOCK</label>
+        <input type="number" id="capInput" value="200000" min="1000" step="1000" />
+      </div>
+      <div class="input-group">
+        <label>MODE</label>
+        <div class="mode-switch">
+          <span class="ms-label ms-virtual on" id="msVirtual">VIRTUAL</span>
+          <label class="switch" id="modeSwitchWrap" title="Toggle VIRTUAL / LIVE">
+            <input type="checkbox" id="modeToggle" />
+            <span class="slider"></span>
+          </label>
+          <span class="ms-label ms-live" id="msLive">LIVE</span>
+        </div>
+      </div>
+      <div class="input-group">
+        <label>SQUARE-OFF AT</label>
+        <input type="time" id="eodInput" value="15:10" step="60" />
+      </div>
+      <div class="btn-group">
+        <button class="btn btn-start" id="startBtn" onclick="startBot()">START</button>
+        <button class="btn btn-stop" id="stopBtn" onclick="stopBot()">STOP</button>
+        <button class="btn btn-squareoff" id="sqOffBtn" onclick="squareOff()"
+                disabled title="Close every open position now">SQUARE OFF</button>
+        <button class="btn btn-copy" id="logBtn" onclick="openTradeLog()"
+                title="Download the Excel trade journal">TRADE LOG</button>
+        <button class="btn btn-clear" onclick="clearLog()">CLEAR</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- WEBHOOK + NGROK -->
+  <div class="panels-row">
+    <div class="panel webhook-panel">
+      <div class="panel-header">WEBHOOK URL</div>
+      <div class="webhook-url-row">
+        <input type="text" id="webhookUrl" readonly placeholder="Waiting for ngrok..." />
+        <button class="btn btn-copy" onclick="copyWebhook()">COPY</button>
+      </div>
+      <div class="ngrok-chips" id="ngrokChips"></div>
+    </div>
+  </div>
+
+  <!-- POSITIONS TABLE (live + recently closed) -->
+  <div class="panel">
+    <div class="panel-header">
+      <span>POSITIONS</span>
+      <span class="legend">
+        <span class="legend-dot dot-live"></span>LIVE
+        <span class="legend-dot dot-sl"></span>SL HIT
+        <span class="legend-dot dot-tp"></span>TP HIT
+        <span class="legend-dot dot-eod"></span>EOD / MANUAL
+      </span>
+    </div>
+    <div class="positions-wrap">
+      <table class="positions-table" id="posTable">
+        <thead>
+          <tr>
+            <th>TIME</th><th>SYMBOL</th><th>QTY</th>
+            <th>ENTRY</th><th>EXIT</th><th>P&L</th><th>STATUS</th>
+          </tr>
+        </thead>
+        <tbody id="posBody">
+          <tr class="empty-row"><td colspan="7">No positions yet</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- LOG CONSOLE -->
+  <div class="panel log-panel">
+    <div class="panel-header">
+      <span>TERMINAL LOG</span>
+      <button class="btn-icon-sm" onclick="clearLog()">CLEAR</button>
+    </div>
+    <div class="log-console" id="logConsole"></div>
+  </div>
+
+</div>
+
+<script src="/static/js/main.js"></script>
+</body>
+</html>

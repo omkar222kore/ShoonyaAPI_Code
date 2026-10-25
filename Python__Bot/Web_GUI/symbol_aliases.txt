@@ -1,0 +1,27 @@
+# Scanner shorthand -> real NSE symbol.
+# One "ALIAS = REAL" pair per line. Lines starting with # are ignored.
+#
+# Why this exists: the broker's searchscrip() is a fuzzy search, so an
+# unknown short name used to resolve to a DIFFERENT company entirely
+# (HDFCL -> HDFCLOWVOL-EQ at INR 19 instead of HDFCLIFE-EQ).
+# These aliases map the names our scanner actually sends to the real symbol.
+
+# HDFC group
+# NOTE: only names that do NOT exist on the exchange belong here. A symbol
+# that IS in the master always trades itself - the converter never lets an
+# alias redirect a live company to another one.
+HDFCL = HDFCLIFE
+HDFC = HDFCBANK
+
+# Tata Motors demerged in 2025: TATAMOTORS no longer trades.
+TATAMOTORS = TMPV
+TATAMOTOR = TMPV
+TATAMTRDVR = TMPV
+
+# Renamed NSE symbols
+GSPL = GSPLTRANS
+HEG = HEGAM
+
+# JBC Pharma (JBCPHARMA / JBCHEPHARM) is no longer an NSE equity, so it is
+# not listed here. If the scanner ever sends it, the bot answers
+# "not found" instead of trading something else.

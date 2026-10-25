@@ -10,7 +10,7 @@ import subprocess
 import threading
 import requests
 from datetime import datetime
-from flask import Flask, render_template, request, jsonify, send_file
+from flask import Flask, render_template, request, jsonify, send_file, session
 from flask_socketio import SocketIO
 
 import config as cfg
@@ -57,6 +57,21 @@ def server_error(e):
     return jsonify({"error": str(getattr(e, "description", None) or e)}), 500
 
 
+UNLOCK_EXEMPT = {"/api/unlock", "/webhook"}
+
+@app.before_request
+def _require_ui_auth():
+    path = request.path
+    if path.startswith("/static/") or path in UNLOCK_EXEMPT:
+        return None
+    if session.get("ui_auth"):
+        return None
+    if path == "/" or path.startswith("/api/"):
+        if path == "/":
+            return render_template("unlock.html")
+        return jsonify({"error": "Locked", "locked": True}), 401
+    return None
+
 @app.errorhandler(404)
 def not_found(e):
     return jsonify({"error": "Not found"}), 404
@@ -64,14 +79,52 @@ def not_found(e):
 
 @app.route("/")
 def index():
+    if not session.get("ui_auth"):
+        return render_template("unlock.html")
     return render_template("index.html")
+
+
+def webhook_url(tunnel_url=""):
+    """The exact URL to paste into Chartink - tunnel + path + token."""
+    base = (tunnel_url or ngrok_urls.get(5000, "") or "").rstrip("/")
+    if not base:
+        return ""
+    token = (cfg.WEBHOOK_TOKEN or "").strip()
+    if not token:
+        return f"{base}/webhook"
+    return f"{base}/webhook?token={token}"
+
+
+def _webhook_token_ok():
+    """The scanner must prove it is the scanner. The webhook is public
+    through the ngrok tunnel, so an open endpoint means anybody can trade."""
+    expected = (cfg.WEBHOOK_TOKEN or "").strip()
+    if not expected:
+        return True
+    given = (request.args.get("token") or "").strip()
+    if not given:
+        given = (request.headers.get("X-Webhook-Token") or "").strip()
+    if not given and request.is_json:
+        given = str((request.get_json(silent=True) or {}).get("token") or "").strip()
+    return given == expected
 
 
 @app.route("/webhook", methods=["POST"])
 def webhook():
+    if not _webhook_token_ok():
+        return jsonify({
+            "status": "unauthorized",
+            "reason": ("bad or missing token - the Chartink webhook URL must end "
+                       "with ?token=<SHOONYA_WEBHOOK_TOKEN>"),
+        }), 401
     data = request.json
     if not bot.running:
-        return jsonify({"status": "bot_not_running"}), 400
+        return jsonify({
+            "status": "bot_not_running",
+            "reason": ("the bot is not running - start it from the dashboard, "
+                       "or it stopped itself after square-off"),
+            "mode": "VIRTUAL" if bot.virtual else "LIVE",
+        }), 400
     result = bot.handle_webhook(data)
     return jsonify(result), 200
 
@@ -105,20 +158,91 @@ def api_stop():
     return jsonify({"status": "stopped"})
 
 
+@app.route("/api/unlock", methods=["POST"])
+def api_unlock():
+    body = request.json or {}
+    if (body.get("password") or "") == cfg.UI_PASSWORD:
+        session["ui_auth"] = True
+        return jsonify({"status": "ok"})
+    return jsonify({"error": "Wrong password"}), 403
+
+@app.route("/api/login", methods=["POST"])
+def api_login():
+    body = request.json or {}
+    ok, msg, user = bot.login_from_ui(
+        user_id=(body.get("user_id") or "").strip(),
+        password=body.get("password") or "",
+        otp=(body.get("otp") or "").strip(),
+        jkey=(body.get("jkey") or "").strip(),
+    )
+    if ok:
+        try:
+            socketio.emit("auth", {"logged_in": True, "user": user})
+        except Exception:
+            pass
+        return jsonify({"status": "ok", "user": user, "message": msg})
+    return jsonify({"error": msg}), 400
+
+@app.route("/api/getjkey", methods=["POST"])
+def api_getjkey():
+    body = request.json or {}
+    ok, msg, token = bot.fetch_jkey(
+        uid=(body.get("user_id") or body.get("uid") or "").strip(),
+        pwd=body.get("password") or body.get("pwd") or "",
+        otp=(body.get("otp") or body.get("factor2") or "").strip(),
+        vc=(body.get("vc") or "").strip(),
+        appkey=(body.get("appkey") or body.get("app_key") or "").strip(),
+        imei=(body.get("imei") or "").strip(),
+        source=(body.get("source") or "WEB").strip(),
+        apkversion=(body.get("apkversion") or "1.0.0").strip(),
+    )
+    if ok:
+        return jsonify({"status": "ok", "jkey": token, "supertoken": token})
+    return jsonify({"error": msg}), 400
+
+@app.route("/api/login/save", methods=["POST"])
+def api_login_save():
+    body = request.json or {}
+    ok, msg = bot.save_credentials(
+        user_id=(body.get("user_id") or "").strip(),
+        password=body.get("password") or "",
+        otp=(body.get("otp") or "").strip(),
+        jkey=(body.get("jkey") or "").strip(),
+    )
+    if ok:
+        return jsonify({"status": "ok", "message": msg})
+    return jsonify({"error": msg}), 400
+
 @app.route("/api/status", methods=["GET"])
 def api_status():
+    readiness = bot.readiness()
+    tunnel_url = ngrok_urls.get(5000, "")
+    if not tunnel_url:
+        readiness["blockers"].append("ngrok tunnel is not up - the scanner "
+                                     "cannot reach this server")
+        readiness["ready"] = False
     return jsonify({
         "running": bot.running,
         "mode": "virtual" if bot.virtual else "live",
-        "realized_pnl": round(bot.realized_pnl, 2) if bot.virtual else 0,
-        "pnl": bot.get_total_pnl() if bot.running else 0,
+        "ready": readiness["ready"],
+        "blockers": readiness["blockers"],
+        "checks": readiness["checks"],
+        "master_rows": readiness["master_rows"],
+        "master_files": readiness["master_files"],
+        "last_payload": bot.last_payload,
+        "last_order": bot.last_order,
+        "tunnel": {"url": tunnel_url, "up": bool(tunnel_url)},
+        "realized_pnl": round(bot.realized_pnl, 2) if bot.virtual else bot.today_realized_pnl(),
+        "pnl": bot.last_pnl if bot.running else bot.today_realized_pnl(),
         "uptime": int(time.time() - _start_time),
         "ngrok_urls": ngrok_urls,
-        "webhook_url": ngrok_urls.get(5000, ""),
+        "webhook_url": webhook_url(tunnel_url),
         "eod_time": bot.eod_time,
         "eod_done": bot._eod_done,
         "eod_pending": bot._eod_reached(),
         "square_off_pending": bot._sq_off_requested,
+        "logged_in": bot.logged_in,
+        "user": bot.userId,
     })
 
 
@@ -179,6 +303,98 @@ def api_tradesummary():
     return jsonify({"file": cfg.TRADE_LOG_FILE, "summary": trade_log.read_summary()})
 
 
+@app.route("/api/check_symbols", methods=["POST"])
+def api_check_symbols():
+    """Resolve a list of symbols one by one and report the live LTP.
+    Read-only: no orders are ever placed from here."""
+    from scrip_resolver import normalize
+
+    body = request.json or {}
+    raw = body.get("symbols", "")
+    if isinstance(raw, list):
+        symbols = [str(s).strip() for s in raw if str(s).strip()]
+    else:
+        symbols = [s.strip() for s in str(raw).replace(";", ",").split(",") if s.strip()]
+    if not symbols:
+        return jsonify({"error": "No symbols given"}), 400
+
+    rows = []
+    for sym in symbols:
+        scrip, info = bot._resolve_with_info(sym, "NSE")
+        row = {
+            "symbol": sym, "tsym": None, "token": None, "lot": None, "ltp": None,
+            "alias": info.get("alias"), "source": info.get("source"),
+            "verdict": "NOT FOUND", "reason": info.get("reason", ""),
+        }
+        if not scrip:
+            cands = info.get("candidates") or []
+            if cands:
+                row["reason"] += f" | broker returned: {', '.join(cands)}"
+            rows.append(row)
+            continue
+
+        row["tsym"] = scrip["tsym"]
+        row["token"] = scrip["token"]
+        row["lot"] = scrip.get("ls", 1)
+        ltp, err = bot._quote(scrip["exchange"], scrip["token"], fresh=True)
+        if ltp is None:
+            row["verdict"] = "NO LTP"
+            row["reason"] = err
+        else:
+            row["ltp"] = round(ltp, 2)
+            expected = normalize(info.get("normalized") or sym)
+            if normalize(scrip["tsym"]) != expected:
+                row["verdict"] = "WRONG SYMBOL"
+                row["reason"] = f"resolved to {scrip['tsym']}, expected {expected}"
+            else:
+                row["verdict"] = "OK"
+        rows.append(row)
+
+    return jsonify({"rows": rows})
+
+
+@app.route("/api/replay", methods=["POST"])
+def api_replay():
+    """Dry-run a payload: what would have traded, and what would have been
+    rejected. Places no orders."""
+    body = request.json or {}
+    data = body.get("payload")
+    if not data and body.get("file"):
+        day = str(body["file"])
+        if not day.endswith(".jsonl"):
+            day += ".jsonl"
+        path = os.path.join(cfg.PAYLOAD_DIR, day)
+        if not os.path.exists(path):
+            return jsonify({"error": f"No payload file {day}"}), 404
+        with open(path, "r", encoding="utf-8") as f:
+            lines = [ln for ln in f if ln.strip()]
+        index = int(body.get("index", len(lines) - 1))
+        if index < 0 or index >= len(lines):
+            return jsonify({"error": f"index out of range (0..{len(lines) - 1})"}), 400
+        data = json.loads(lines[index]).get("payload")
+    if not data:
+        return jsonify({"error": "payload required"}), 400
+    return jsonify(bot.dry_run(data))
+
+
+@app.route("/api/payloads", methods=["GET"])
+def api_payloads():
+    """List the webhook payloads we have stored."""
+    out = []
+    if os.path.isdir(cfg.PAYLOAD_DIR):
+        for name in sorted(os.listdir(cfg.PAYLOAD_DIR)):
+            if not name.endswith(".jsonl"):
+                continue
+            path = os.path.join(cfg.PAYLOAD_DIR, name)
+            count = 0
+            with open(path, "r", encoding="utf-8") as f:
+                for ln in f:
+                    if ln.strip():
+                        count += 1
+            out.append({"file": name, "count": count})
+    return jsonify({"payloads": out})
+
+
 @app.route("/api/positions", methods=["GET"])
 def api_positions():
     if not bot.running:
@@ -213,6 +429,8 @@ def _collect_tunnels(timeout=15):
                 emit_log(f"[NGROK] Tunnels ready: {len(tunnels)}")
                 for port, url in ngrok_urls.items():
                     emit_log(f"  Port {port} -> {url}")
+                if 5000 in ngrok_urls:
+                    emit_log(f"[WEBHOOK] Paste this into Chartink: {webhook_url(ngrok_urls[5000])}")
                 socketio.emit("ngrok", {"urls": ngrok_urls})
                 return True
         except Exception:

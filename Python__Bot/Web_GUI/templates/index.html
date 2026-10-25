@@ -21,6 +21,38 @@
       <h1 class="glow-text">SHOONYA <span class="accent">ALGO</span> TERMINAL</h1>
     </div>
     <div class="header-right">
+      <div class="login-wrap">
+        <button class="login-trigger" id="loginTrigger" onclick="toggleLoginPanel()">&#128274; LOGIN</button>
+        <div class="login-panel" id="loginPanel">
+          <div class="login-field">
+            <label>USER ID</label>
+            <input type="text" id="uidInput" value="FA74468" autocomplete="off" />
+          </div>
+          <div class="login-field">
+            <label>PASSWORD</label>
+            <div class="token-input-wrap">
+              <input type="password" id="pwdInput" value="GURU123kore#" autocomplete="off" />
+              <button class="btn-icon" id="togglePwd" title="Show/Hide">&#128065;</button>
+            </div>
+          </div>
+          <div class="login-field">
+            <label>OTP (leave blank to auto-generate)</label>
+            <input type="text" id="otpInput" placeholder="6-digit OTP" maxlength="6" inputmode="numeric" autocomplete="off" />
+          </div>
+          <div class="login-actions">
+            <button class="btn btn-copy login-btn" id="fetchJkeyBtn" onclick="fetchJkeyFromWeb()">FETCH JKEY FROM WEB</button>
+          </div>
+          <div class="login-field">
+            <label>JKEY / SUPERTOKEN (auto-filled, or paste manually)</label>
+            <textarea id="jkeyInput" rows="2" placeholder="Auto-filled after fetch, or paste jkey here" autocomplete="off"></textarea>
+            <button class="btn btn-copy login-btn" onclick="copyJkey()">COPY JKEY</button>
+          </div>
+          <div class="login-actions">
+            <button class="btn btn-copy login-btn" onclick="useJkey()">USE JKEY IN START</button>
+            <button class="btn btn-copy login-btn" onclick="saveLogin()">SAVE</button>
+          </div>
+        </div>
+      </div>
       <div class="clock" id="clock"></div>
     </div>
   </header>
@@ -31,14 +63,16 @@
       <span class="status-dot"></span>
       <span id="statusText">OFFLINE</span>
     </div>
+    <div class="mode-pill virtual" id="modePill">VIRTUAL</div>
     <div class="uptime" id="uptime">UP 00:00:00</div>
   </div>
 
   <!-- KPI ROW -->
   <div class="kpi-row">
-    <div class="kpi-card pnl-card" id="pnlCard">
+    <div class="kpi-card pnl-card pnl-idle" id="pnlCard">
       <div class="kpi-label">TOTAL P&L</div>
-      <div class="kpi-value" id="pnlValue">0.00</div>
+      <div class="kpi-value" id="pnlValue">&mdash;</div>
+      <div class="pnl-chip" id="pnlChip">NOT RUNNING</div>
       <canvas id="pnlSparkline" width="200" height="40"></canvas>
     </div>
     <div class="kpi-card">
