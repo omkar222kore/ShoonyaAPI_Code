@@ -89,9 +89,9 @@
   <div class="panel controls-panel">
     <div class="controls-row">
       <div class="input-group">
-        <label>SUPER TOKEN</label>
+        <label>SUPER TOKEN / JKEY (optional - auto-fetches if empty)</label>
         <div class="token-input-wrap">
-          <input type="password" id="tokenInput" placeholder="Enter SuperToken" />
+          <input type="password" id="tokenInput" placeholder="Leave empty for auto-login" />
           <button class="btn-icon" id="toggleToken" title="Show/Hide">&#128065;</button>
         </div>
       </div>
@@ -115,7 +115,7 @@
         <input type="time" id="eodInput" value="15:10" step="60" />
       </div>
       <div class="btn-group">
-        <button class="btn btn-start" id="startBtn" onclick="startBot()">START</button>
+        <button class="btn btn-start" id="startBtn" onclick="startBot()">AUTO LOGIN & START</button>
         <button class="btn btn-stop" id="stopBtn" onclick="stopBot()">STOP</button>
         <button class="btn btn-squareoff" id="sqOffBtn" onclick="squareOff()"
                 disabled title="Close every open position now">SQUARE OFF</button>

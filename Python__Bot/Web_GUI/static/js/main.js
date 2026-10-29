@@ -454,13 +454,9 @@ socket.on("ngrok", (data) => {
 // ── Actions ────────────────────────────────────────────────
 
 function startBot() {
-  const token = document.getElementById("tokenInput").value.trim();
+  const tokenInput = document.getElementById("tokenInput");
+  let token = tokenInput ? tokenInput.value.trim() : "";
   const cap = document.getElementById("capInput").value;
-
-  if (!token) {
-    addLog("[ERROR] Enter SuperToken first", "error");
-    return;
-  }
 
   if (selectedMode === "live") {
     const ok = confirm(
@@ -478,14 +474,27 @@ function startBot() {
     addLog("[SYSTEM] Starting bot in VIRTUAL mode (no real orders)", "success");
   }
 
+  const body = {
+    trading_cap: parseInt(cap) || 200000,
+    virtual: selectedMode === "virtual",
+  };
+  if (token) {
+    body.super_token = token;
+  } else {
+    // Try auto-login using credentials from login panel
+    const uid = (document.getElementById("uidInput") || {}).value || "";
+    const pwd = (document.getElementById("pwdInput") || {}).value || "";
+    const otp = (document.getElementById("otpInput") || {}).value || "";
+    if (uid) body.user_id = uid.trim();
+    if (pwd) body.password = pwd;
+    if (otp) body.otp = otp.trim();
+    addLog("[AUTO-LOGIN] No token provided, attempting auto-fetch from saved/entered credentials...", "warn");
+  }
+
   fetch("/api/start", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      super_token: token,
-      trading_cap: parseInt(cap) || 200000,
-      virtual: selectedMode === "virtual",
-    }),
+    body: JSON.stringify(body),
   })
     .then(parseJson)
     .then(d => {

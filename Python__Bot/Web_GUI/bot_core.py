@@ -728,7 +728,7 @@ class TradingBot:
         self.on_status("LOGIN_FAILED")
         return False
 
-    def start(self, super_token, trading_cap, virtual=True):
+    def start(self, super_token="", trading_cap=None, virtual=True):
         if self.running:
             self._log("Bot already running")
             return False
@@ -747,7 +747,28 @@ class TradingBot:
         if not self.load_excel_safe():
             return False
 
-        if not self.login(super_token, trading_cap):
+        token = (super_token or "").strip()
+        if not token:
+            cred = self._load_cred() or {}
+            ok, msg, fetched = self.fetch_jkey(
+                uid=cred.get("user", ""),
+                pwd=cred.get("pwd", ""),
+                otp=cred.get("otp", ""),
+                vc=cred.get("vc", ""),
+                appkey=cred.get("appkey", ""),
+                imei=cred.get("imei", ""),
+                source="WEB",
+                apkversion="1.0.0",
+            )
+            if ok and fetched:
+                token = str(fetched).strip()
+                self._log("[AUTO-LOGIN] Fetched jkey from saved credentials")
+            else:
+                self._log(f"ERROR: {msg or 'SuperToken/JKEY required'}")
+                self.on_status("LOGIN_FAILED")
+                return False
+
+        if not self.login(token, trading_cap):
             return False
 
         self.virtual = bool(virtual)
@@ -908,25 +929,21 @@ class TradingBot:
         dropped = []
         from config import MAX_STOCKS_PER_TIME
         if len(symbols) > MAX_STOCKS_PER_TIME:
-            # Trade the first N instead of throwing the whole alert away.
-            extra = symbols[MAX_STOCKS_PER_TIME:]
-            extra_prices = prices[MAX_STOCKS_PER_TIME:]
-            symbols = symbols[:MAX_STOCKS_PER_TIME]
-            prices = prices[:MAX_STOCKS_PER_TIME]
             dropped = [
                 {
                     "symbol": s,
-                    "trigger_price": p,
+                    "trigger_price": float(p),
                     "code": "too_many_symbols",
-                    "reason": (f"alert had more than {MAX_STOCKS_PER_TIME} symbols - "
-                               f"only the first {MAX_STOCKS_PER_TIME} are traded"),
+                    "reason": (f"Alert has {len(symbols)} symbols (> {MAX_STOCKS_PER_TIME}) - "
+                               "entire alert skipped, no orders placed"),
                 }
-                for s, p in zip(extra, extra_prices)
+                for s, p in zip(symbols, prices)
             ]
             self._log(
-                f"Received {len(symbols) + len(dropped)} stocks, trading the first "
-                f"{MAX_STOCKS_PER_TIME}. Dropped: {', '.join(extra)}"
+                f"SKIP ENTIRE ALERT: {len(symbols)} symbols > {MAX_STOCKS_PER_TIME} - "
+                f"no orders placed. {', '.join(symbols)}"
             )
+            return [], dropped
 
         trigger_time = datetime.strptime(
             triggered_at.strip().upper(), "%I:%M %p"
@@ -1156,9 +1173,8 @@ class TradingBot:
                          f"the live bot would reject this alert")
         if len(symbols) > cfg.MAX_STOCKS_PER_TIME:
             notes.append(f"{len(symbols)} symbols > MAX_STOCKS_PER_TIME "
-                         f"({cfg.MAX_STOCKS_PER_TIME}) - the live bot trades the first "
-                         f"{cfg.MAX_STOCKS_PER_TIME} and drops "
-                         f"{', '.join(symbols[cfg.MAX_STOCKS_PER_TIME:])}")
+                         f"({cfg.MAX_STOCKS_PER_TIME}) - entire alert would be skipped "
+                         f"with no orders placed")
         if len(symbols) != len(prices):
             notes.append("Symbol/price count mismatch")
 

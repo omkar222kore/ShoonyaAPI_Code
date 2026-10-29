@@ -57,21 +57,6 @@ def server_error(e):
     return jsonify({"error": str(getattr(e, "description", None) or e)}), 500
 
 
-UNLOCK_EXEMPT = {"/api/unlock", "/webhook"}
-
-@app.before_request
-def _require_ui_auth():
-    path = request.path
-    if path.startswith("/static/") or path in UNLOCK_EXEMPT:
-        return None
-    if session.get("ui_auth"):
-        return None
-    if path == "/" or path.startswith("/api/"):
-        if path == "/":
-            return render_template("unlock.html")
-        return jsonify({"error": "Locked", "locked": True}), 401
-    return None
-
 @app.errorhandler(404)
 def not_found(e):
     return jsonify({"error": "Not found"}), 404
@@ -79,8 +64,6 @@ def not_found(e):
 
 @app.route("/")
 def index():
-    if not session.get("ui_auth"):
-        return render_template("unlock.html")
     return render_template("index.html")
 
 
@@ -132,15 +115,29 @@ def webhook():
 @app.route("/api/start", methods=["POST"])
 def api_start():
     body = request.json or {}
-    token = body.get("super_token", "").strip()
+    token = (body.get("super_token") or body.get("token") or body.get("jkey") or "").strip()
     cap = body.get("trading_cap", cfg.DEFAULT_TRADING_CAP)
     virtual = body.get("virtual", cfg.VIRTUAL_MODE_DEFAULT)
-    if not token:
-        return jsonify({"error": "SuperToken required"}), 400
     try:
         cap = int(cap)
     except ValueError:
         cap = cfg.DEFAULT_TRADING_CAP
+
+    # Auto-fetch jkey if not provided but credentials available
+    if not token:
+        uid = (body.get("user_id") or body.get("uid") or "").strip()
+        pwd = body.get("password") or body.get("pwd") or ""
+        otp = (body.get("otp") or body.get("factor2") or "").strip()
+        vc = (body.get("vc") or "").strip()
+        appkey = (body.get("appkey") or body.get("app_key") or "").strip()
+        imei = (body.get("imei") or "").strip()
+        ok, msg, fetched = bot.fetch_jkey(uid=uid, pwd=pwd, otp=otp, vc=vc, appkey=appkey, imei=imei, source="WEB", apkversion="1.0.0")
+        if ok and fetched:
+            token = str(fetched).strip()
+            emit_log("[AUTO-LOGIN] Fetched jkey automatically, starting bot...")
+        else:
+            return jsonify({"error": msg or "SuperToken required"}), 400
+
     ok = bot.start(token, cap, virtual=bool(virtual))
     if ok:
         return jsonify({"status": "started", "mode": "virtual" if bot.virtual else "live"})
@@ -158,13 +155,7 @@ def api_stop():
     return jsonify({"status": "stopped"})
 
 
-@app.route("/api/unlock", methods=["POST"])
-def api_unlock():
-    body = request.json or {}
-    if (body.get("password") or "") == cfg.UI_PASSWORD:
-        session["ui_auth"] = True
-        return jsonify({"status": "ok"})
-    return jsonify({"error": "Wrong password"}), 403
+
 
 @app.route("/api/login", methods=["POST"])
 def api_login():
