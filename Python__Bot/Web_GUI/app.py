@@ -223,8 +223,8 @@ def api_status():
         "last_payload": bot.last_payload,
         "last_order": bot.last_order,
         "tunnel": {"url": tunnel_url, "up": bool(tunnel_url)},
-        "realized_pnl": round(bot.realized_pnl, 2) if bot.virtual else bot.today_realized_pnl(),
-        "pnl": bot.last_pnl if bot.running else bot.today_realized_pnl(),
+        "realized_pnl": round(bot.realized_pnl, 2) if bot.virtual else bot.get_total_pnl(fresh=True) if bot.running else bot.today_realized_pnl(),
+        "pnl": bot.get_total_pnl(fresh=True) if bot.running else bot.today_realized_pnl(),
         "uptime": int(time.time() - _start_time),
         "ngrok_urls": ngrok_urls,
         "webhook_url": webhook_url(tunnel_url),
@@ -393,9 +393,15 @@ def api_positions():
     positions = bot.get_positions()
     result = []
     for p in positions:
+        try:
+            nq = float(p.get("netqty", 0) or 0)
+        except Exception:
+            nq = 0
+        if abs(nq) <= 1e-9:
+            continue
         result.append({
             "symbol": str(p.get("tsym", "")).strip(),
-            "qty": int(float(p.get("netqty", 0))),
+            "qty": int(abs(nq)),
             "pnl": float(p.get("urmtom", 0)),
         })
     return jsonify(result)

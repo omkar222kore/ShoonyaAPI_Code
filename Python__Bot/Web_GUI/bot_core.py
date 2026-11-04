@@ -42,7 +42,7 @@ class TradingBot:
         self.api = None
         self.token_df = None
         self.super_token = ""
-        self.trading_cap = 1000
+        self.trading_cap = 95000
         self.userId = ""
         self.running = False
         self._thread = None
@@ -875,6 +875,11 @@ class TradingBot:
         # Re-read the book so the UI and log reflect what is actually left open
         # (never report "flat" when a close failed).
         try:
+            with self._cache_lock:
+                self._cache.pop(("positions",), None)
+        except Exception:
+            pass
+        try:
             remaining = self.get_positions(fresh=True)
         except Exception as e:
             self._log(f"SQUARE-OFF re-read failed: {e}")
@@ -1327,12 +1332,40 @@ class TradingBot:
             open_pnl = sum(float(p.get("urmtom", 0) or 0) for p in positions)
             return round(open_pnl + self.realized_pnl, 2)
         mtm = sum(float(i.get("urmtom", 0) or 0) for i in positions)
-        pnl = sum(float(i.get("rpnl", 0) or 0) for i in positions)
-        return round(mtm + pnl, 2)
+        rpnl = sum(float(i.get("rpnl", 0) or 0) for i in positions)
+        return round(mtm + rpnl, 2)
 
     def get_total_pnl(self, fresh=False):
         try:
-            return self._pnl_from(self.get_positions(fresh=fresh))
+            if self.virtual:
+                return self._pnl_from(self.get_positions(fresh=fresh))
+            # LIVE - sum from broker raw positions (including rpnl/urmtom)
+            import config as cfg
+            if not fresh:
+                cached = self._cache_get(("positions_raw",))
+                if cached is not None:
+                    ret = cached
+                else:
+                    try:
+                        ret = self.api.get_positions() or []
+                    except Exception as e:
+                        self._log(f"PnL Fetch Error: {e}")
+                        return self.last_pnl
+                    self._cache_set(("positions_raw",), ret, getattr(cfg, "POS_CACHE_TTL", 1.0))
+            else:
+                try:
+                    ret = self.api.get_positions() or []
+                except Exception as e:
+                    self._log(f"PnL Fetch Error: {e}")
+                    return self.last_pnl
+                self._cache_set(("positions_raw",), ret, getattr(cfg, "POS_CACHE_TTL", 1.0))
+            try:
+                mtm = sum(float(i.get("urmtom", 0) or 0) for i in ret)
+                rpnl = sum(float(i.get("rpnl", 0) or 0) for i in ret)
+                val = round(mtm + rpnl, 2)
+                return val
+            except Exception:
+                return self._pnl_from(self.get_positions(fresh=True))
         except Exception as e:
             self._log(f"PnL Fetch Error: {e}")
             return self.last_pnl
@@ -1354,10 +1387,28 @@ class TradingBot:
             ret = self.api.get_positions() or []
         except Exception as e:
             self._log(f"Position fetch error: {e}")
-            return self._last_raw_positions
-        self._last_raw_positions = ret
-        self._cache_set(("positions",), ret, getattr(cfg, "POS_CACHE_TTL", 1.0))
-        return ret
+            # filter zero qty on cached/last as well
+            filtered_last = []
+            for p in self._last_raw_positions or []:
+                try:
+                    nq = float(p.get("netqty", 0) or 0)
+                except Exception:
+                    nq = 0
+                if abs(nq) > 1e-9:
+                    filtered_last.append(p)
+            return filtered_last
+        # Filter out zero/closed positions from broker
+        filtered = []
+        for p in ret:
+            try:
+                nq = float(p.get("netqty", 0) or 0)
+            except Exception:
+                nq = 0
+            if abs(nq) > 1e-9:
+                filtered.append(p)
+        self._last_raw_positions = filtered
+        self._cache_set(("positions",), filtered, getattr(cfg, "POS_CACHE_TTL", 1.0))
+        return filtered
 
     def _lookup_live_exit(self, sym):
         """Return (entry_price, exit_price, pnl) for a live position.
@@ -1469,6 +1520,11 @@ class TradingBot:
 
         if self.virtual:
             order_id, rows = self._close_virtual(sym, qty, ltp)
+            try:
+                with self._cache_lock:
+                    self._cache.pop(("positions",), None)
+            except Exception:
+                pass
             self._log(f"V-EXITED {sym} | Lots: {abs(qty)} @ {ltp:.2f} | Order: {order_id}")
             self.on_order({
                 "symbol": sym, "direction": "BUY", "qty": abs(qty),
@@ -1476,6 +1532,14 @@ class TradingBot:
                 "exchange": exchange, "virtual": True,
             })
             self._log_trades(rows, order_id, reason)
+            try:
+                positions = self.get_positions(fresh=True)
+                self.last_positions = self._pos_snapshot(positions)
+                self.last_pnl = self._pnl_from(positions)
+                self.on_positions(self.last_positions)
+                self.on_pnl(self.last_pnl)
+            except Exception:
+                pass
             return True
 
         entry, exit_px, urmtom = self._lookup_live_exit(sym)
@@ -1517,6 +1581,19 @@ class TradingBot:
             "qty": abs(qty), "entry": entry, "exit": exit_px,
             "pnl": urmtom,
         }], order_id, reason)
+        try:
+            with self._cache_lock:
+                self._cache.pop(("positions",), None)
+        except Exception:
+            pass
+        try:
+            positions = self.get_positions(fresh=True)
+            self.last_positions = self._pos_snapshot(positions)
+            self.last_pnl = self._pnl_from(positions)
+            self.on_positions(self.last_positions)
+            self.on_pnl(self.last_pnl)
+        except Exception:
+            pass
         return True
 
     @staticmethod
@@ -1623,20 +1700,37 @@ class TradingBot:
                         lower = -(self.trading_cap * PNL_STOP_LOSS_PCT)
                         upper = self.trading_cap * PNL_TAKE_PROFIT_PCT
 
-                        if urmtom <= lower or urmtom >= upper:
-                            hit = "STOP-LOSS" if urmtom <= lower else "TAKE-PROFIT"
-                            if self.virtual:
-                                ltp = float(p.get("ltp", 0)) or float(p.get("avgprice", 0))
-                            else:
-                                ltp = 0.0
-                            self._log(f"{hit} hit on {exch}:{sym} | PnL: {urmtom}")
-                            if self._exit_position(sym, qty, ltp, exch, reason=hit):
-                                self.processed_stocks.add(sym)
-                                exited.add(sym)
+                        hit = None
+                        ltp = 0.0
+                        if urmtom <= lower:
+                            hit = "STOP-LOSS"
+                        elif urmtom >= upper:
+                            hit = "TAKE-PROFIT"
+                        else:
+                            continue
+
+                        if self.virtual:
+                            ltp = float(p.get("ltp", 0)) or float(p.get("avgprice", 0))
+                        else:
+                            ltp = 0.0
+                        self._log(f"{hit} hit on {exch}:{sym} | PnL: {urmtom}")
+                        if self._exit_position(sym, qty, ltp, exch, reason=hit):
+                            try:
+                                with self._cache_lock:
+                                    self._cache.pop(("positions",), None)
+                            except Exception:
+                                pass
+                            self.processed_stocks.add(sym)
+                            exited.add(sym)
 
                     if exited:
                         # pos_list was built before the exits - refresh so a just
                         # closed symbol is not shown as still open.
+                        try:
+                            with self._cache_lock:
+                                self._cache.pop(("positions",), None)
+                        except Exception:
+                            pass
                         positions = self.get_positions(fresh=True)
                         pos_list = self._pos_snapshot(positions)
                         total_pnl = self._pnl_from(positions)

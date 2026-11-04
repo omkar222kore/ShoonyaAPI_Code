@@ -16,7 +16,7 @@ function parseJson(r) {
 
 // ── Mode switch (virtual / live) ─────────────────────────
 
-let selectedMode = "virtual";
+let selectedMode = "live";
 let botRunning = false;
 let lastPnl = null;
 let dayPnl = null;
@@ -475,7 +475,7 @@ function startBot() {
   }
 
   const body = {
-    trading_cap: parseInt(cap) || 200000,
+    trading_cap: parseInt(cap) || 95000,
     virtual: selectedMode === "virtual",
   };
   if (token) {
