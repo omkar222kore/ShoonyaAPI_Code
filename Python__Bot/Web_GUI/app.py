@@ -131,12 +131,16 @@ def api_start():
         vc = (body.get("vc") or "").strip()
         appkey = (body.get("appkey") or body.get("app_key") or "").strip()
         imei = (body.get("imei") or "").strip()
-        ok, msg, fetched = bot.fetch_jkey(uid=uid, pwd=pwd, otp=otp, vc=vc, appkey=appkey, imei=imei, source="WEB", apkversion="1.0.0")
-        if ok and fetched:
-            token = str(fetched).strip()
-            emit_log("[AUTO-LOGIN] Fetched jkey automatically, starting bot...")
-        else:
-            return jsonify({"error": msg or "SuperToken required"}), 400
+        try:
+            ok, msg, fetched = bot.fetch_jkey(uid=uid, pwd=pwd, otp=otp, vc=vc, appkey=appkey, imei=imei, source="WEB", apkversion="1.0.0")
+            if ok and fetched:
+                token = str(fetched).strip()
+                emit_log("[AUTO-LOGIN] Fetched jkey automatically, starting bot...")
+            else:
+                # Let bot.start() try with cred.yml
+                token = ""
+        except Exception as e:
+            token = ""
 
     ok = bot.start(token, cap, virtual=bool(virtual))
     if ok:

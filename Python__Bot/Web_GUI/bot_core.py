@@ -617,6 +617,13 @@ class TradingBot:
         uid = (uid or cred.get("user", "")).strip()
         pwd_plain = (pwd or cred.get("pwd", ""))
         otp = (otp or "").strip()
+        # If otp looks like a TOTP secret (long, non-numeric), ignore and derive
+        if otp and not (otp.isdigit() and len(otp) == 6):
+            otp = ""
+        if not otp and cred.get("otp"):
+            otp_raw = str(cred.get("otp")).strip()
+            if otp_raw.isdigit() and len(otp_raw) == 6:
+                otp = otp_raw
         if not otp and cred.get("factor2"):
             try:
                 otp = self._totp(cred["factor2"])
@@ -750,21 +757,26 @@ class TradingBot:
         token = (super_token or "").strip()
         if not token:
             cred = self._load_cred() or {}
-            ok, msg, fetched = self.fetch_jkey(
-                uid=cred.get("user", ""),
-                pwd=cred.get("pwd", ""),
-                otp=cred.get("otp", ""),
-                vc=cred.get("vc", ""),
-                appkey=cred.get("appkey", ""),
-                imei=cred.get("imei", ""),
-                source="WEB",
-                apkversion="1.0.0",
-            )
-            if ok and fetched:
-                token = str(fetched).strip()
-                self._log("[AUTO-LOGIN] Fetched jkey from saved credentials")
-            else:
-                self._log(f"ERROR: {msg or 'SuperToken/JKEY required'}")
+            try:
+                ok, msg, fetched = self.fetch_jkey(
+                    uid=cred.get("user", ""),
+                    pwd=cred.get("pwd", ""),
+                    otp=cred.get("otp", ""),
+                    vc=cred.get("vc", ""),
+                    appkey=cred.get("apikey") or cred.get("appkey", ""),
+                    imei=cred.get("imei", ""),
+                    source="WEB",
+                    apkversion="1.0.0",
+                )
+                if ok and fetched:
+                    token = str(fetched).strip()
+                    self._log("[AUTO-LOGIN] Fetched jkey from saved credentials")
+                else:
+                    self._log(f"ERROR: {msg or 'SuperToken/JKEY required'}")
+                    self.on_status("LOGIN_FAILED")
+                    return False
+            except Exception as e:
+                self._log(f"ERROR: {e}")
                 self.on_status("LOGIN_FAILED")
                 return False
 
