@@ -20,6 +20,7 @@ let selectedMode = "live";
 let botRunning = false;
 let lastPnl = null;
 let dayPnl = null;
+let tradingCap = 95000;
 let eodDone = false;
 let eodPending = false;
 
@@ -214,6 +215,7 @@ function updateUptime() {
       }
       eodDone = !!d.eod_done;
       eodPending = !!d.eod_pending;
+      if (typeof d.trading_cap === "number") tradingCap = d.trading_cap;
       if (typeof d.pnl === "number") dayPnl = d.pnl;
       if (d.eod_done && !eodDoneLogged) {
         eodDoneLogged = true;
@@ -333,9 +335,33 @@ function statusBadge(reason) {
   const r = String(reason || "").toUpperCase();
   if (r.indexOf("STOP") === 0) return '<span class="badge badge-sl">SL HIT</span>';
   if (r.indexOf("TAKE") === 0) return '<span class="badge badge-tp">TP HIT</span>';
+  if (r === "TRAIL-COST") return '<span class="badge badge-eod">TRAIL-COST</span>';
+  if (r === "TRAIL-LOCK") return '<span class="badge badge-eod">TRAIL-LOCK</span>';
   if (r.indexOf("EOD") === 0) return `<span class="badge badge-eod">${esc(reason)}</span>`;
   if (r === "MANUAL") return '<span class="badge badge-manual">MANUAL</span>';
   return `<span class="badge badge-manual">${esc(reason || "CLOSED")}</span>`;
+}
+
+function levelChip(value, kind) {
+  if (value == null || !isFinite(Number(value))) return "&mdash;";
+  return `<span class="level-chip level-${kind}">${fmtPnl(value)}</span>`;
+}
+
+function levelCells(reason) {
+  const r = String(reason || "").toUpperCase();
+  if (r.indexOf("STOP") === 0) {
+    return [levelChip(-tradingCap * 0.006, "sl"), "&mdash;"];
+  }
+  if (r.indexOf("TAKE") === 0) {
+    return ["&mdash;", levelChip(tradingCap * 0.014, "tp")];
+  }
+  if (r === "TRAIL-COST") {
+    return [levelChip(0, "sl"), "&mdash;"];
+  }
+  if (r === "TRAIL-LOCK") {
+    return [levelChip(tradingCap * 0.005, "sl"), "&mdash;"];
+  }
+  return ["&mdash;", "&mdash;"];
 }
 
 function renderPositions() {
@@ -350,10 +376,13 @@ function renderPositions() {
       <td class="dim">&mdash;</td>
       <td class="${pnlClass(p.pnl)}">${fmtPnl(p.pnl)}</td>
       <td><span class="badge badge-live">LIVE</span></td>
+      <td>${levelChip(p.sl, "sl")}</td>
+      <td>${levelChip(p.tp, "tp")}</td>
     </tr>`);
 
   const closed = closedTrades.map(t => {
     const flashing = flashOrderId && t.order_id === flashOrderId;
+    const [slCell, tpCell] = levelCells(t.reason);
     return `<tr class="row-closed${flashing ? " row-flash" : ""}">
       <td>${esc(t.time) || "&mdash;"}</td>
       <td>${esc(t.symbol)}</td>
@@ -362,11 +391,13 @@ function renderPositions() {
       <td>${fmtPrice(t.exit)}</td>
       <td class="${pnlClass(t.pnl)}">${fmtPnl(t.pnl)}</td>
       <td>${statusBadge(t.reason)}</td>
+      <td>${slCell}</td>
+      <td>${tpCell}</td>
     </tr>`;
   });
 
   if (!live.length && !closed.length) {
-    tbody.innerHTML = '<tr class="empty-row"><td colspan="7">No positions yet</td></tr>';
+    tbody.innerHTML = '<tr class="empty-row"><td colspan="9">No positions yet</td></tr>';
     return;
   }
   tbody.innerHTML = live.concat(closed).join("");

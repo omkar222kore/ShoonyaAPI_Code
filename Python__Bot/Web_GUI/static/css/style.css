@@ -699,6 +699,28 @@ body::before {
   border: 1px solid rgba(0, 240, 255, 0.4);
 }
 
+.level-chip {
+  display: inline-block;
+  min-width: 68px;
+  padding: 3px 8px;
+  border-radius: 3px;
+  font-family: var(--mono);
+  font-size: 0.74rem;
+  font-weight: 600;
+  text-align: center;
+  white-space: nowrap;
+}
+.level-sl {
+  background: rgba(255, 51, 102, 0.12);
+  color: var(--red);
+  border: 1px solid rgba(255, 51, 102, 0.3);
+}
+.level-tp {
+  background: rgba(0, 255, 136, 0.12);
+  color: var(--green);
+  border: 1px solid rgba(0, 255, 136, 0.3);
+}
+
 .legend {
   display: flex;
   align-items: center;
