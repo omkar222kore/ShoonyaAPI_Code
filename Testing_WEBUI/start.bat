@@ -9,7 +9,7 @@ echo ============================================
 echo.
 
 set "BASE_DIR=%~dp0"
-set "SHARED_DIR=%BASE_DIR%..\Testing_Use"
+set "SHARED_DIR=%BASE_DIR%"
 set "VENV=%BASE_DIR%.venv"
 set "PYTHON=%VENV%\Scripts\python.exe"
 set "REQS=%BASE_DIR%requirements.txt"

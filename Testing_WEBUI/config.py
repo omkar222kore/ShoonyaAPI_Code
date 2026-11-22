@@ -4,7 +4,7 @@ Testing_WEBUI - Config
 import os
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-SHARED_DIR = os.path.normpath(os.path.join(BASE_DIR, "..", "Testing_Use"))
+SHARED_DIR = BASE_DIR
 
 BROKER_CRED = os.path.join(SHARED_DIR, "cred.yml")
 EXCEL_FILE = os.path.join(SHARED_DIR, "NSE_symbols_filtered.xlsx")
