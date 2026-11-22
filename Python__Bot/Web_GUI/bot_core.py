@@ -48,6 +48,7 @@ class TradingBot:
         self._thread = None
         self._stop_event = threading.Event()
         self.processed_stocks = set()
+        self._trail_state = {}
 
         self.virtual = True
         self.virtual_positions = []
@@ -795,6 +796,7 @@ class TradingBot:
         self._stop_event.clear()
         self.running = True
         self.processed_stocks = set()
+        self._trail_state = {}
         self._seen_alerts = {}
         self._cache = {}
         self.last_pnl = 0.0
@@ -882,6 +884,7 @@ class TradingBot:
                 ltp = 0.0
             if self._exit_position(sym, qty, ltp, exch, reason=reason):
                 self.processed_stocks.add(sym)
+                self._trail_state.pop(sym, None)
                 closed += 1
 
         # Re-read the book so the UI and log reflect what is actually left open
@@ -1098,6 +1101,7 @@ class TradingBot:
                 # A freshly opened position must be monitored again even if this
                 # symbol was exited earlier today (re-entry support).
                 self.processed_stocks.discard(tsym.strip().upper())
+                self._trail_state.pop(tsym.strip().upper(), None)
 
                 result["status"] = "traded"
                 result["tsym"] = tsym
@@ -1624,6 +1628,8 @@ class TradingBot:
 
     def _monitor_loop(self):
         from config import (PNL_STOP_LOSS_PCT, PNL_TAKE_PROFIT_PCT,
+                            PNL_TRAIL_COST_PCT, PNL_TRAIL_LOCK_TRIGGER_PCT,
+                            PNL_TRAIL_LOCK_PCT, TRAIL_CONFIRM_POLLS,
                             MONITOR_INTERVAL, CYCLE_LOG_EVERY, MAX_DAILY_LOSS)
         cycle = 1
         last_log = 0.0
@@ -1709,13 +1715,59 @@ class TradingBot:
                         if sym in self.processed_stocks or qty == 0:
                             continue
 
-                        lower = -(self.trading_cap * PNL_STOP_LOSS_PCT)
-                        upper = self.trading_cap * PNL_TAKE_PROFIT_PCT
+                        cap = self.trading_cap
+                        state = self._trail_state.get(sym)
+                        if state is None:
+                            state = {
+                                "stop": -(cap * PNL_STOP_LOSS_PCT),
+                                "r1_streak": 0,
+                                "r2_streak": 0,
+                                "r1_applied": False,
+                                "r2_applied": False,
+                            }
+                            self._trail_state[sym] = state
+
+                        pct = urmtom / cap if cap else 0.0
+                        state["r1_streak"] = (state["r1_streak"] + 1
+                                              if pct >= PNL_TRAIL_COST_PCT else 0)
+                        state["r2_streak"] = (state["r2_streak"] + 1
+                                              if pct >= PNL_TRAIL_LOCK_TRIGGER_PCT else 0)
+
+                        if (state["r2_streak"] >= TRAIL_CONFIRM_POLLS
+                                and not state["r2_applied"]):
+                            new_stop = cap * PNL_TRAIL_LOCK_PCT
+                            if new_stop > state["stop"]:
+                                state["stop"] = new_stop
+                                self._log(
+                                    f"TRAIL {exch}:{sym}: SL -> +0.5% LOCK "
+                                    f"(PnL {urmtom:.2f})"
+                                )
+                            state["r2_applied"] = True
+                            state["r1_applied"] = True
+                        elif (state["r1_streak"] >= TRAIL_CONFIRM_POLLS
+                                and not state["r1_applied"]
+                                and not state["r2_applied"]):
+                            new_stop = 0.0
+                            if new_stop > state["stop"]:
+                                state["stop"] = new_stop
+                                self._log(
+                                    f"TRAIL {exch}:{sym}: SL -> COST "
+                                    f"(PnL {urmtom:.2f})"
+                                )
+                            state["r1_applied"] = True
+
+                        lower = state["stop"]
+                        upper = cap * PNL_TAKE_PROFIT_PCT
 
                         hit = None
                         ltp = 0.0
                         if urmtom <= lower:
-                            hit = "STOP-LOSS"
+                            if lower > 0:
+                                hit = "TRAIL-LOCK"
+                            elif lower == 0:
+                                hit = "TRAIL-COST"
+                            else:
+                                hit = "STOP-LOSS"
                         elif urmtom >= upper:
                             hit = "TAKE-PROFIT"
                         else:
@@ -1733,6 +1785,7 @@ class TradingBot:
                             except Exception:
                                 pass
                             self.processed_stocks.add(sym)
+                            self._trail_state.pop(sym, None)
                             exited.add(sym)
 
                     if exited:
