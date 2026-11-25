@@ -74,9 +74,9 @@ function runBacktest() {
     body: JSON.stringify({
       csv_path: document.getElementById("csvInput").value,
       sl_pct: parseFloat(document.getElementById("slInput").value) || 0.6,
-      tp_pct: parseFloat(document.getElementById("tpInput").value) || 1.3,
+      tp_pct: parseFloat(document.getElementById("tpInput").value) || 1.4,
       capital: parseInt(document.getElementById("capInput").value) || 200000,
-      eod_time: document.getElementById("eodInput").value || "15:10",
+      eod_time: document.getElementById("eodInput").value || "15:05",
       skip_download: document.getElementById("skipDownload").checked,
     }),
   })

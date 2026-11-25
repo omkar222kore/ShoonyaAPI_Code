@@ -115,7 +115,7 @@ class BacktestEngine:
         self._log(f"Download done: {len(ok)} ok, {len(fail)} failed")
         return ok, fail
 
-    def run_backtest(self, stocks_info, sl_pct=0.6, tp_pct=1.3, capital=200000, eod_time="15:10"):
+    def run_backtest(self, stocks_info, sl_pct=0.6, tp_pct=1.4, capital=200000, eod_time="15:05"):
         import config as cfg
         data_dir = cfg.STOCKS_DATA_DIR
         results = []
