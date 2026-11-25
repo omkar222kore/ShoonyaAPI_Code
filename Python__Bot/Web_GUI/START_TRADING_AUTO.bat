@@ -28,20 +28,28 @@ call :log "===== AUTO START %STAMP% ====="
 rem ---------------------------------------------------------------
 rem 1) Is the web server already listening?
 rem ---------------------------------------------------------------
-powershell -NoProfile -ExecutionPolicy Bypass -Command "try{ $r=Invoke-WebRequest -UseBasicParsing -Uri 'http://127.0.0.1:5000/api/status' -TimeoutSec 3; if($r.StatusCode -eq 200){exit 0}else{exit 1} }catch{ exit 1 }"
+call :live_server_ok
+if not errorlevel 1 goto :have_server
+
+call :log "Port 5000 is not the live app - freeing port..."
+call :kill_port_5000
+powershell -NoProfile -Command "Start-Sleep -Seconds 2" >nul 2>&1
+
+call :log "Starting web server (app.py)..."
+start "SHOONYA_SERVER" /min cmd /c ""%PYTHON%" app.py 1>>"%SRVLOG%" 2>&1"
+call :log "Waiting up to 90s for live app on port 5000..."
+call :wait_live_server
 if errorlevel 1 (
-    call :log "Starting web server (app.py)..."
-    start "SHOONYA_SERVER" /min cmd /c ""%PYTHON%" app.py 1>>"%SRVLOG%" 2>&1"
-    call :log "Waiting up to 90s for port 5000..."
-    powershell -NoProfile -ExecutionPolicy Bypass -Command "$ok=$false; for($i=0;$i -lt 90;$i++){ try{ $r=Invoke-WebRequest -UseBasicParsing -Uri 'http://127.0.0.1:5000/api/status' -TimeoutSec 2; if($r.StatusCode -eq 200){$ok=$true; break} }catch{}; Start-Sleep -Seconds 1 }; if($ok){exit 0}else{exit 1}"
-    if errorlevel 1 (
-        call :log "[ERROR] Server did not come up within 90s (see %SRVLOG%)"
-        exit /b 1
-    )
-    call :log "Server is up."
-) else (
-    call :log "Server already running on port 5000."
+    call :log "[ERROR] Live app did not come up within 90s (see %SRVLOG%)"
+    exit /b 1
 )
+call :log "Live server is up."
+goto :after_server
+
+:have_server
+call :log "Live server already running on port 5000."
+
+:after_server
 
 rem ---------------------------------------------------------------
 rem 2) Open the dashboard first, then continue starting
@@ -93,6 +101,20 @@ exit /b 1
 rem ---------------------------------------------------------------
 rem helpers
 rem ---------------------------------------------------------------
+:live_server_ok
+powershell -NoProfile -ExecutionPolicy Bypass -Command "try{ $s=Invoke-RestMethod -Uri 'http://127.0.0.1:5000/api/status' -TimeoutSec 3; if($s.PSObject.Properties.Name -contains 'eod_time'){exit 0}else{exit 1} }catch{ exit 1 }"
+exit /b %errorlevel%
+
+:wait_live_server
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$ok=$false; for($i=0;$i -lt 90;$i++){ try{ $s=Invoke-RestMethod -Uri 'http://127.0.0.1:5000/api/status' -TimeoutSec 2; if($s.PSObject.Properties.Name -contains 'eod_time'){ $ok=$true; break } }catch{}; Start-Sleep -Seconds 1 }; if($ok){exit 0}else{exit 1}"
+exit /b %errorlevel%
+
+:kill_port_5000
+for /f "tokens=5" %%p in ('netstat -ano ^| findstr :5000 ^| findstr LISTENING') do (
+    taskkill /F /T /PID %%p >nul 2>&1
+)
+exit /b 0
+
 :status
 powershell -NoProfile -ExecutionPolicy Bypass -Command "try{ $s=Invoke-RestMethod -Uri 'http://127.0.0.1:5000/api/status' -TimeoutSec 5; 'running=' + ([string]$s.running).ToLower(); 'mode=' + [string]$s.mode; 'webhook=' + [string]$s.webhook_url }catch{ 'running=false'; 'mode=unknown'; 'webhook=' }" > "%STATUS%" 2>&1
 exit /b 0
