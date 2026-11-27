@@ -32,3 +32,7 @@ trading_log.txt
 # Generated trade journal (created at runtime)
 trade_log.xlsx
 .aider*
+
+super_token.txt
+jkey.txt
+token.txt

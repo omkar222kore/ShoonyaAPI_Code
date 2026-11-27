@@ -1,0 +1,8 @@
+numpy
+pandas
+flask
+pyotp
+pytz
+fyers-apiv3
+websocket-client
+setuptools

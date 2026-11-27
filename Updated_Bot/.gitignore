@@ -1,0 +1,9 @@
+__pycache__/
+*.pyc
+super_token.txt
+token.txt
+fyers_creds.json
+cred.yml
+state/
+trades/
+logs/
