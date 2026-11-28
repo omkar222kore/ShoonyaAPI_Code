@@ -1,5 +1,6 @@
 import os
 import threading
+import time
 from collections import defaultdict
 from datetime import datetime
 
@@ -21,6 +22,8 @@ _ERRORS = []
 _BARS = defaultdict(list)
 _PENDING = defaultdict(list)
 _STATE = {}
+_LTP = {}
+_LTP_TS = {}
 
 
 def log(message):
@@ -113,6 +116,8 @@ def _handle_tick(message):
     with _LOCK:
         _TICKS += 1
         _SYMBOLS_SEEN.add(symbol)
+        _LTP[symbol] = ltp
+        _LTP_TS[symbol] = time.time()
         state = _STATE.get(symbol)
         if state is None:
             _STATE[symbol] = {
@@ -271,6 +276,27 @@ def consume(bar_timestamp):
             else:
                 _PENDING.pop(symbol, None)
     return result
+
+
+def get_ltp(symbol, max_age_sec=1.0):
+    key = _base_symbol(symbol)
+    with _LOCK:
+        price = _LTP.get(key)
+        stamp = _LTP_TS.get(key)
+    if price is None or stamp is None:
+        return None
+    if max_age_sec is not None and (time.time() - stamp) > max_age_sec:
+        return None
+    return float(price)
+
+
+def ltp_snapshot():
+    with _LOCK:
+        now = time.time()
+        return {
+            symbol: {"ltp": price, "age": now - _LTP_TS.get(symbol, now)}
+            for symbol, price in _LTP.items()
+        }
 
 
 def snapshot():

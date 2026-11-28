@@ -15,7 +15,7 @@ TOKEN_FILE = r"E:\ShoonyaAPI_Code\super_token.txt"
 TRADE_FIELDS = [
     "Date", "Time", "Symbol", "TradingSymbol", "Token", "Qty",
     "Entry_Time", "Entry_Price", "Exit_Time", "Exit_Price", "Exit_Reason",
-    "SL", "TP", "Gross_PnL", "Charges", "Est_Net_PnL", "Order_ID", "Mode",
+    "SL", "TP", "Gross_PnL", "Charges", "Est_Net_PnL", "Order_ID", "SL_Order_ID", "SL_Order_Status", "Mode",
 ]
 
 SCAN_FIELDS = [

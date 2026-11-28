@@ -1,5 +1,6 @@
 import argparse
 import os
+import threading
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timedelta
@@ -16,6 +17,9 @@ from broker import ShoonyaBroker
 
 PAPER_MODE = config.PAPER_TRADE
 HISTORY_COLUMNS = ["Timestamp", "Open", "High", "Low", "Close", "Volume"]
+STATE_LOCK = threading.RLock()
+SL_FILLED_STATUSES = frozenset(("COMPLETE", "FILLED"))
+SL_CANCELLED_STATUSES = frozenset(("CANCELED", "CANCELLED"))
 
 
 def log(message):
@@ -27,6 +31,63 @@ def safe_float(value, default=0.0):
         return float(str(value).replace(",", "").strip())
     except (TypeError, ValueError):
         return default
+
+
+def claim_position(bot_state, symbol):
+    with STATE_LOCK:
+        position = bot_state["open_positions"].get(symbol)
+        if not position or position.get("closing"):
+            return None, False
+        position["closing"] = True
+        return dict(position), True
+
+
+def finish_position(bot_state, symbol, remove):
+    with STATE_LOCK:
+        position = bot_state["open_positions"].get(symbol)
+        if not position:
+            return
+        if remove:
+            bot_state["open_positions"].pop(symbol, None)
+        else:
+            position["closing"] = False
+
+
+def paper_charges(entry_price, qty):
+    return round(config.PAPER_BROKERAGE + safe_float(entry_price) * int(qty) * config.STATUTORY_RATE, 2)
+
+
+def record_exit(bot_state, symbol, position, reason, exit_price, sl_order_status=""):
+    gross = (safe_float(position["entry_price"]) - safe_float(exit_price)) * int(position["qty"])
+    charges = paper_charges(position["entry_price"], position["qty"]) if PAPER_MODE else config.CHARGE_PER_TRADE
+    net = gross - charges
+    now = config.now_ist()
+    app_state.append_trade({
+        "Date": now.strftime("%Y-%m-%d"),
+        "Time": now.strftime("%H:%M:%S"),
+        "Symbol": symbol,
+        "TradingSymbol": position["tsym"],
+        "Token": position["token"],
+        "Qty": int(position["qty"]),
+        "Entry_Time": position["entry_time"],
+        "Entry_Price": round(safe_float(position["entry_price"]), 2),
+        "Exit_Time": now.strftime("%H:%M:%S"),
+        "Exit_Price": round(safe_float(exit_price), 2),
+        "Exit_Reason": reason,
+        "SL": round(safe_float(position["sl_price"]), 2),
+        "TP": round(safe_float(position["tp_price"]), 2),
+        "Gross_PnL": round(gross, 2),
+        "Charges": charges,
+        "Est_Net_PnL": round(net, 2),
+        "Order_ID": position.get("order_id", ""),
+        "SL_Order_ID": position.get("sl_order_id", ""),
+        "SL_Order_Status": sl_order_status,
+        "Mode": "PAPER" if PAPER_MODE else "LIVE",
+    })
+    log("%s %s entry=%.2f exit=%.2f net=%.2f" % (
+        reason, symbol, safe_float(position["entry_price"]), safe_float(exit_price), net
+    ))
+    app_state.save_state(bot_state)
 
 
 def round_tick(price):
@@ -327,6 +388,11 @@ def evaluate_candidates(cache, universe, bar_timestamp):
                 statuses[symbol] = indicators.entry_status(indicators.compute_features(completed))
     for symbol in frames:
         statuses.setdefault(symbol, "INSUFFICIENT_HISTORY")
+    rsi_map = {}
+    if features is not None and not getattr(features, "empty", True) and {"Symbol", "Timestamp", "RSI"}.issubset(features.columns):
+        current = features.loc[features["Timestamp"] == bar_timestamp]
+        for row in current.itertuples(index=False):
+            rsi_map[str(row.Symbol).strip().upper()] = safe_float(row.RSI, float("-inf"))
     matched = []
     rejects = {}
     samples = {}
@@ -343,7 +409,8 @@ def evaluate_candidates(cache, universe, bar_timestamp):
         parts.append("%s:%d (%s)" % (status, rejects[status], example))
     if stale_count:
         parts.append("STALE_BAR:%d" % stale_count)
-    return sorted(matched), " | ".join(parts), evaluated, stale_count, condition_audit(frames, statuses)
+    matched.sort(key=lambda symbol: (-rsi_map.get(symbol, float("-inf")), symbol))
+    return matched, " | ".join(parts), evaluated, stale_count, condition_audit(frames, statuses)
 
 
 def reconcile_positions(broker, universe, bot_state):
@@ -379,6 +446,10 @@ def reconcile_positions(broker, universe, bot_state):
             "sl_price": round_tick(entry_price * (1.0 + config.SL_PCT)),
             "tp_price": round_tick(entry_price * (1.0 - config.TP_PCT)),
             "order_id": "RECONCILED",
+            "sl_order_id": "",
+            "sl_trigger_price": 0.0,
+            "sl_limit_price": 0.0,
+            "closing": False,
         }
     bot_state["open_positions"] = live
     for symbol in live:
@@ -398,8 +469,8 @@ def enter_position(broker, record, ltp, bot_state, available_margin):
     if not PAPER_MODE:
         order_id = broker.place_order(record["tsym"], qty, "S", "BB_BLAST_SHORT")
         fill = broker.wait_for_fill(order_id)
-        if fill is None:
-            return False, "entry fill failed"
+        if fill is None or str(fill.get("status", "")).strip().upper() not in SL_FILLED_STATUSES:
+            return False, "entry fill not complete"
         entry_price = fill.get("avgprc") or ltp
         filled_qty = fill.get("fillshares") or qty
     else:
@@ -410,6 +481,15 @@ def enter_position(broker, record, ltp, bot_state, available_margin):
     filled_qty = int(filled_qty)
     if entry_price <= 0 or filled_qty <= 0:
         return False, "invalid fill"
+    sl_order_id = ""
+    sl_trigger_price = 0.0
+    sl_limit_price = 0.0
+    try:
+        sl_order_id, sl_trigger_price, sl_limit_price = broker.place_sl_order(
+            record["tsym"], filled_qty, entry_price, "BB_BLAST_SL"
+        )
+    except Exception as exc:
+        log("WARNING SL-LMT placement failed for %s: %s; using 0.5s RAM SL/TP" % (record["symbol"], exc))
     position = {
         "symbol": record["symbol"],
         "token": record["token"],
@@ -420,10 +500,20 @@ def enter_position(broker, record, ltp, bot_state, available_margin):
         "sl_price": round_tick(entry_price * (1.0 + config.SL_PCT)),
         "tp_price": round_tick(entry_price * (1.0 - config.TP_PCT)),
         "order_id": order_id,
+        "sl_order_id": sl_order_id,
+        "sl_trigger_price": sl_trigger_price,
+        "sl_limit_price": sl_limit_price,
+        "closing": False,
     }
-    bot_state["open_positions"][record["symbol"]] = position
-    if record["symbol"] not in bot_state["traded_today"]:
-        bot_state["traded_today"].append(record["symbol"])
+    with STATE_LOCK:
+        bot_state["open_positions"][record["symbol"]] = position
+        if record["symbol"] not in bot_state["traded_today"]:
+            bot_state["traded_today"].append(record["symbol"])
+        bot_state["traded_today"] = sorted(set(bot_state["traded_today"]))
+    if sl_order_id:
+        log("SL-LMT %s id=%s trigger=%.2f limit=%.2f" % (
+            record["symbol"], sl_order_id, sl_trigger_price, sl_limit_price
+        ))
     log("SHORT %s %s qty=%d entry=%.2f sl=%.2f tp=%.2f" % (
         record["symbol"], record["tsym"], filled_qty, entry_price,
         position["sl_price"], position["tp_price"],
@@ -431,15 +521,67 @@ def enter_position(broker, record, ltp, bot_state, available_margin):
     return True, "entered"
 
 
+def clear_sl_order(bot_state, symbol, order_id):
+    with STATE_LOCK:
+        position = bot_state["open_positions"].get(symbol)
+        if position and position.get("sl_order_id") == order_id:
+            position["sl_order_id"] = ""
+    app_state.save_state(bot_state)
+
+
+def cancel_sl_order(broker, bot_state, symbol, position, reason):
+    order_id = position.get("sl_order_id")
+    if not order_id:
+        return True, None
+    try:
+        cancelled = broker.cancel_order(order_id)
+    except Exception as exc:
+        log("WARNING SL cancel failed for %s order=%s reason=%s: %s" % (symbol, order_id, reason, exc))
+        return False, "SL_CANCEL_FAILED"
+    if not cancelled:
+        log("WARNING SL cancel rejected for %s order=%s reason=%s" % (symbol, order_id, reason))
+        return False, "SL_CANCEL_REJECTED"
+    if PAPER_MODE:
+        clear_sl_order(bot_state, symbol, order_id)
+        return True, None
+    status = None
+    for _ in range(max(1, int(config.ORDER_STATUS_POLLS))):
+        status = str(broker.get_order_status(order_id) or "").strip().upper()
+        if status in SL_CANCELLED_STATUSES:
+            clear_sl_order(bot_state, symbol, order_id)
+            return True, status
+        if status in SL_FILLED_STATUSES:
+            clear_sl_order(bot_state, symbol, order_id)
+            return False, "EXCHANGE_SL_FILLED"
+        time.sleep(config.ORDER_STATUS_POLL_SEC)
+    log("WARNING SL cancel unconfirmed for %s order=%s status=%s; exit held" % (symbol, order_id, status))
+    return False, "SL_CANCEL_UNCONFIRMED"
+
+
 def close_position(broker, bot_state, symbol, reason, fallback_price=None):
-    position = bot_state["open_positions"].get(symbol)
-    if not position:
-        return True
+    position, claimed = claim_position(bot_state, symbol)
+    if not claimed:
+        return position is None
+    if position.get("sl_order_id"):
+        cancelled, sl_status = cancel_sl_order(broker, bot_state, symbol, position, reason)
+        if sl_status == "EXCHANGE_SL_FILLED":
+            exit_price = safe_float(
+                position.get("sl_limit_price"),
+                safe_float(position.get("sl_trigger_price"), position["sl_price"]),
+            )
+            record_exit(bot_state, symbol, position, "EXCHANGE_SL", exit_price, sl_status)
+            finish_position(bot_state, symbol, True)
+            app_state.save_state(bot_state)
+            return True
+        if not cancelled:
+            finish_position(bot_state, symbol, False)
+            app_state.save_state(bot_state)
+            return False
     tsym = position["tsym"]
     if not PAPER_MODE:
         remaining = broker.position_qty(tsym)
         if remaining >= 0:
-            del bot_state["open_positions"][symbol]
+            finish_position(bot_state, symbol, True)
             app_state.save_state(bot_state)
             return True
         close_qty = abs(remaining)
@@ -447,53 +589,35 @@ def close_position(broker, bot_state, symbol, reason, fallback_price=None):
         fill = broker.wait_for_fill(order_id)
         if fill is None:
             log("EXIT FAILED %s order=%s" % (symbol, order_id))
+            finish_position(bot_state, symbol, False)
+            app_state.save_state(bot_state)
             return False
         exit_price = safe_float(fill.get("avgprc"), fallback_price or position["entry_price"])
         leftover = broker.position_qty(tsym)
         if leftover < 0:
-            position["qty"] = abs(leftover)
+            with STATE_LOCK:
+                current = bot_state["open_positions"].get(symbol)
+                if current:
+                    current["qty"] = abs(leftover)
+            finish_position(bot_state, symbol, False)
             app_state.save_state(bot_state)
             return False
     else:
         exit_price = safe_float(fallback_price, position["entry_price"])
-    gross = (position["entry_price"] - exit_price) * position["qty"]
-    net = gross - config.CHARGE_PER_TRADE
-    now = config.now_ist()
-    app_state.append_trade({
-        "Date": now.strftime("%Y-%m-%d"),
-        "Time": now.strftime("%H:%M:%S"),
-        "Symbol": symbol,
-        "TradingSymbol": tsym,
-        "Token": position["token"],
-        "Qty": position["qty"],
-        "Entry_Time": position["entry_time"],
-        "Entry_Price": round(position["entry_price"], 2),
-        "Exit_Time": now.strftime("%H:%M:%S"),
-        "Exit_Price": round(exit_price, 2),
-        "Exit_Reason": reason,
-        "SL": round(position["sl_price"], 2),
-        "TP": round(position["tp_price"], 2),
-        "Gross_PnL": round(gross, 2),
-        "Charges": config.CHARGE_PER_TRADE,
-        "Est_Net_PnL": round(net, 2),
-        "Order_ID": position.get("order_id", ""),
-        "Mode": "PAPER" if PAPER_MODE else "LIVE",
-    })
-    del bot_state["open_positions"][symbol]
+    record_exit(bot_state, symbol, position, reason, exit_price)
+    finish_position(bot_state, symbol, True)
     app_state.save_state(bot_state)
-    log("%s %s entry=%.2f exit=%.2f net=%.2f" % (
-        reason, symbol, position["entry_price"], exit_price, net
-    ))
     return True
 
 
 def monitor_positions(broker, bot_state):
-    for symbol, position in list(bot_state["open_positions"].items()):
-        quote = broker.get_quote("NSE", position["token"])
-        if not quote:
+    with STATE_LOCK:
+        snapshot = [(symbol, dict(position)) for symbol, position in bot_state["open_positions"].items()]
+    for symbol, position in snapshot:
+        if position.get("closing"):
             continue
-        ltp = safe_float(quote.get("lp"), 0.0)
-        if ltp <= 0:
+        ltp = fyers_stream.get_ltp(symbol, config.LTP_MAX_AGE_SEC)
+        if ltp is None or ltp <= 0:
             continue
         reason = None
         if ltp >= position["sl_price"]:
@@ -504,12 +628,70 @@ def monitor_positions(broker, bot_state):
             close_position(broker, bot_state, symbol, reason, ltp)
 
 
+def sync_sl_orders(broker, bot_state):
+    if PAPER_MODE:
+        return
+    with STATE_LOCK:
+        tracked = [
+            (symbol, dict(position))
+            for symbol, position in bot_state["open_positions"].items()
+            if position.get("sl_order_id") and not position.get("closing")
+        ]
+    if not tracked:
+        return
+    orders = {}
+    for order in broker.get_order_book():
+        if isinstance(order, dict):
+            orders[str(order.get("norenordno", ""))] = order
+    for symbol, position in tracked:
+        order_id = position["sl_order_id"]
+        order = orders.get(order_id)
+        if not order:
+            continue
+        status = str(order.get("status", "")).strip().upper()
+        if status in SL_FILLED_STATUSES:
+            claimed, ok = claim_position(bot_state, symbol)
+            if not ok:
+                continue
+            exit_price = safe_float(order.get("avgprc"), claimed.get("sl_limit_price") or claimed["sl_price"])
+            record_exit(bot_state, symbol, claimed, "EXCHANGE_SL", exit_price, status)
+            finish_position(bot_state, symbol, True)
+            app_state.save_state(bot_state)
+        elif status in SL_CANCELLED_STATUSES or status in ("REJECTED", "INVALID"):
+            clear_sl_order(bot_state, symbol, order_id)
+            log("WARNING SL order %s for %s is %s; RAM SL/TP remains active" % (order_id, symbol, status))
+
+
 def square_off_all(broker, bot_state):
-    for symbol in list(bot_state["open_positions"]):
-        position = bot_state["open_positions"][symbol]
-        quote = broker.get_quote("NSE", position["token"])
-        ltp = safe_float(quote.get("lp"), 0.0) if quote else position["entry_price"]
+    with STATE_LOCK:
+        snapshot = [(symbol, dict(position)) for symbol, position in bot_state["open_positions"].items()]
+    for symbol, position in snapshot:
+        ltp = fyers_stream.get_ltp(symbol, config.LTP_MAX_AGE_SEC)
+        if ltp is None or ltp <= 0:
+            ltp = position["entry_price"]
         close_position(broker, bot_state, symbol, "EOD_305PM", ltp)
+
+
+def monitor_worker(broker, bot_state, stop_event):
+    ticks = 0
+    interval = max(0.01, float(config.MONITOR_INTERVAL))
+    sync_every = max(1, int(round(float(config.SL_ORDER_SYNC_INTERVAL) / interval)))
+    while not stop_event.wait(interval):
+        monitor_positions(broker, bot_state)
+        ticks += 1
+        if ticks % sync_every == 0:
+            sync_sl_orders(broker, bot_state)
+
+
+def start_monitor_thread(broker, bot_state, stop_event):
+    thread = threading.Thread(
+        target=monitor_worker,
+        args=(broker, bot_state, stop_event),
+        name="bb-blast-sl-monitor",
+        daemon=True,
+    )
+    thread.start()
+    return thread
 
 
 def run_scan(broker, bot_state, universe, cache, scan_hm, heartbeat):
@@ -659,6 +841,9 @@ def run():
     bot_state["paper"] = PAPER_MODE
     reconcile_positions(broker, universe, bot_state)
     app_state.save_state(bot_state)
+    monitor_stop = threading.Event()
+    monitor_thread = start_monitor_thread(broker, bot_state, monitor_stop)
+    log("RAM SL/TP monitor started at %.2fs" % config.MONITOR_INTERVAL)
     cache = {}
     warmup_done = False
     heartbeat = {"last_scan": None, "nifty": None}
@@ -682,8 +867,6 @@ def run():
             cache, _ = warmup_cache(universe)
             warmup_done = True
             app_state.save_state(bot_state)
-        if warmup_done and bot_state["open_positions"]:
-            monitor_positions(broker, bot_state)
         if warmup_done and hm in config.SCAN_TIMES and now.second >= 3:
             if hm not in bot_state["completed_scans"]:
                 run_scan(broker, bot_state, universe, cache, hm, heartbeat)
@@ -692,6 +875,10 @@ def run():
                 app_state.save_state(bot_state)
         write_heartbeat(bot_state, heartbeat)
         time.sleep(config.MONITOR_INTERVAL)
+    monitor_stop.set()
+    if monitor_thread.is_alive():
+        monitor_thread.join(timeout=2.0)
+    log("RAM SL/TP monitor stopped")
     app_state.write_heartbeat({
         "pid": os.getpid(),
         "running": False,

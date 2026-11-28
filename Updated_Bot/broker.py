@@ -5,6 +5,8 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
+import config
+
 
 def load_super_token(path):
     if not path or not os.path.exists(path):
@@ -61,7 +63,7 @@ class ShoonyaBroker:
         res = self._post("TPSeries", jdata)
         return res if isinstance(res, list) else None
 
-    def place_order(self, tsym, qty, side, remarks="BB_BLAST_SHORT"):
+    def place_order(self, tsym, qty, side, remarks="BB_BLAST_SHORT", price_type="MKT", price=0.0, trigger_price=None, product="I", validity="DAY"):
         if self.paper:
             self._paper_seq += 1
             return "PAPER_%d_%d" % (int(time.time() * 1000), self._paper_seq)
@@ -73,14 +75,16 @@ class ShoonyaBroker:
             "tsym": urllib.parse.quote_plus(tsym),
             "qty": str(int(qty)),
             "dscqty": "0",
-            "prc": "0",
-            "prd": "I",
+            "prc": str(price) if price else "0",
+            "prd": product,
             "trantype": side,
-            "prctyp": "MKT",
-            "ret": "DAY",
+            "prctyp": price_type,
+            "ret": validity,
             "amo": "NO",
             "remarks": remarks,
         }
+        if trigger_price is not None:
+            jdata["trgprc"] = str(trigger_price)
         res = self._post("PlaceOrder", jdata)
         if not isinstance(res, dict) or res.get("stat") != "Ok":
             raise RuntimeError("PlaceOrder failed for %s: %s" % (tsym, res))
@@ -88,6 +92,52 @@ class ShoonyaBroker:
         if not order_id:
             raise RuntimeError("PlaceOrder returned no order id for %s: %s" % (tsym, res))
         return str(order_id)
+
+    def place_sl_order(self, tsym, qty, fill_price, remarks="BB_BLAST_SL"):
+        trigger_price = round(float(fill_price) * config.SL_LMT_TRIGGER_MULTIPLIER, 2)
+        limit_price = round(trigger_price * config.SL_LMT_LIMIT_MULTIPLIER, 2)
+        order_id = self.place_order(
+            tsym,
+            qty,
+            "B",
+            remarks=remarks,
+            price_type="SL-LMT",
+            price=limit_price,
+            trigger_price=trigger_price,
+        )
+        return order_id, trigger_price, limit_price
+
+    def cancel_order(self, order_id):
+        if not order_id:
+            return False
+        if self.paper:
+            return True
+        jdata = {
+            "uid": self.user_id,
+            "ordersource": "API",
+            "norenordno": str(order_id),
+        }
+        res = self._post("CancelOrder", jdata)
+        if isinstance(res, dict) and res.get("stat") == "Ok":
+            return True
+        emsg = res.get("emsg") if isinstance(res, dict) else res
+        text = str(emsg or "").lower()
+        if "already cancelled" in text or "order not found" in text:
+            return True
+        raise RuntimeError("CancelOrder failed for %s: %s" % (order_id, res))
+
+    def get_order_status(self, order_id):
+        if self.paper:
+            return "CANCELED"
+        if not order_id:
+            return None
+        for order in self.get_order_book():
+            if not isinstance(order, dict):
+                continue
+            if str(order.get("norenordno", "")) != str(order_id):
+                continue
+            return str(order.get("status", "")).strip().upper()
+        return None
 
     def get_order_book(self):
         res = self._post("OrderBook", {})
